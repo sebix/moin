@@ -141,6 +141,10 @@
                                     {% if url == "/+index/" %}
                                         <i class="fa fa-table-list"></i>
                                     {% endif %}
+                                    {%- set wiki_href, display_name, title, exists = theme_supp.userhome() %}
+                                    {% if url == ("/+" + display_name + "/user") %}
+                                        <i class="fa fa-user"></i>
+                                    {% endif %}
                                     {{ text }}
                                 </a>
                             </div>
