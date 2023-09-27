@@ -30,7 +30,8 @@ br { display: none; }
     margin-right: 4pt; }
 #moin-searchform input.moin-search-query { border: none;
     border-bottom: 1pt solid #242424; border-radius: 0pt; width: 90%; }
-#moin-search-submit { min-width: 0pt; }
+#moin-search-submit { min-width: 0pt;
+    background: url("../icons/magnifying-glass-solid.svg") center center no-repeat; }
 
 #moin-page { min-width: 0pt; }
 
