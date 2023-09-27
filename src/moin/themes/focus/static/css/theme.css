@@ -1,5 +1,20 @@
+:root {
+    --accent: #2269db;
+    --accent-hover: #4382e7;
+    --negative: #cc4343;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
 html, body { max-width: 100vw; max-height: 100vh; overflow-x: hidden;}
 h1, h2, h3, h4, h5, h6 { border-bottom: none; }
+h2 { margin-top: 1.6em; margin-bottom: 0.5em; }
+br { display: none; }
 
 #moin-main-wrapper { display: flex; }
 .moin-logo { text-align: start; }
@@ -11,9 +26,11 @@ h1, h2, h3, h4, h5, h6 { border-bottom: none; }
 #top-bar a:hover, .moin-breadcrumb a:hover { background-color: #d6d6d6bd }
 #moin-navibar .wikilink { display: flex; align-items: center; }
 
-#moin-searchform { float: none; display: flex; margin-bottom: 14pt; width: 90%; }
-#moin-searchform input#f_q { border: none; border-bottom: 1pt solid #242424;
-    border-radius: 0pt; width: 90%; }
+#moin-searchform { float: none; display: flex; width: 90%; margin-bottom: 14pt;
+    margin-right: 4pt; }
+#moin-searchform input.moin-search-query { border: none;
+    border-bottom: 1pt solid #242424; border-radius: 0pt; width: 90%; }
+#moin-search-submit { min-width: 0pt; }
 
 #moin-page { min-width: 0pt; }
 
@@ -30,7 +47,7 @@ header li::marker { display: none; }
 
 #top-bar .moin-panel-heading { display: none; }
 header a, header a:link, #top-bar a { color: #242424; white-space: nowrap; }
-header a:visited, #top-bar a:visited { color: #3d3d3d; }
+header a:visited, #top-bar a:visited { color: #242424; }
 
 .moin-breadcrumb { margin: 14pt 0; }
 .moin-breadcrumb .moin-panel-heading { font-size: 1.1rem; margin-bottom: 4pt; }
@@ -47,8 +64,50 @@ header a:visited, #top-bar a:visited { color: #3d3d3d; }
 }
 #moin-credits-container { display: flex; align-items: end; justify-content: space-between; }
 
-#moin-flash { width: 98%; }
+#moin-content { width: 98%; }
+
 .moin-flash-info { background-color: #e4f2ff; border: 1pt solid #81c3ff;
     border-radius: 2pt; }
 .moin-flash-info::before { font-family: FontAwesome; content: "\f05a"; color: #415e79; }
 .moin-flash::after { color: #424242; right: 2px; }
+
+.moin-button { background-color: white; border: 2pt solid var(--accent);
+    border-radius: 2pt; height: 24pt; width: fit-content; min-width: 60pt;
+    padding: 0pt 6pt; margin: .5em 0pt; }
+.moin-button:hover { box-shadow: none; }
+.moin-button:hover { color: white; background-color: var(--accent-hover);
+    border-color: var(--accent-hover); }
+.moin-button:hover a { color: white; }
+.moin-button.negative { border-color: var(--negative); }
+.moin-button.negative:hover { color: white; background-color: var(--negative); }
+#moin-save-text-button { color: white; background-color: var(--accent); }
+#moin-save-text-button:hover { background-color: var(--accent-hover); }
+
+.moin-form input[type="submit"].moin-modify-submit,
+.moin-form .moin-load-draft, .moin-form .moin-cancel {
+    float: none;
+    clear: none;
+    margin: unset;
+}
+.moin-edit-help { box-sizing: border-box; float: unset; padding: 0pt; }
+.moin-edit-help.moin-button { display: block; }
+.moin-edit-help a { height: 100%; width: calc(100% - 12pt); display: flex; align-items: center;
+    padding: 0pt 6pt; }
+.moin-form .submit-buttons { display: flex; column-gap: 8pt; justify-content: end;
+    margin: 12pt 0;
+}
+.moin-form button, .moin-form input[type="submit"] { clear: none; margin: unset; }
+.moin-form button, .moin-button, .moin-form input[type="submit"] { display: flex;
+    align-items: center; justify-content: center; }
+
+.moin-edit-content { font-family: "JetBrains Mono", monospace; font-variant-ligatures: none;
+    margin-top: 6pt; }
+
+#moin-modify input[type="file"] { color: #383838; font-size: 0.9rem; cursor: pointer; }
+
+.moin-form dl { margin-top: 8pt; margin-bottom: 6pt; }
+
+div.hint { min-height: unset; margin-top: 0pt; margin-left: 1pt; padding: 0pt;
+    border: none; font-size: 0.9rem; color: #383838; }
+div.hint::before { font-family: FontAwesome; content: "\f0eb"; padding: 0pt;
+    margin-right: 4pt; }
