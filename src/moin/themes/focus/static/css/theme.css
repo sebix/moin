@@ -35,8 +35,8 @@ br { display: none; }
 
 #moin-page { min-width: 0pt; }
 
-header { min-width: 120pt; margin-right: 18pt; padding-top: 8pt; padding-left: 8pt;
-    box-shadow: 2pt 0pt 10pt 2pt rgba(0, 0, 0, 0.1);}
+header { min-width: 120pt; min-height: 100vh; margin-right: 18pt; padding-top: 8pt;
+    padding-left: 8pt; box-shadow: 2pt 0pt 10pt 2pt rgba(0, 0, 0, 0.1); }
 header ol, header ul { padding-left: 0pt; }
 header li::marker { display: none; }
 
@@ -112,3 +112,16 @@ div.hint { min-height: unset; margin-top: 0pt; margin-left: 1pt; padding: 0pt;
     border: none; font-size: 0.9rem; color: #383838; }
 div.hint::before { font-family: FontAwesome; content: "\f0eb"; padding: 0pt;
     margin-right: 4pt; }
+
+.moin-tabs { margin-bottom: 20pt; }
+.moin-tab-titles { border: none; padding-left: 0pt; display: flex; flex-wrap: wrap;
+    row-gap: 4pt; column-gap: 6pt; }
+.moin-tab-titles li { padding: 0pt; margin: 0pt; border: none; }
+.moin-tab-titles a { border-radius: 0pt; border: none; background-color: white; }
+.moin-tabs .moin-tab-titles a { display: flex; text-align: center;
+    white-space: nowrap; height: fit-content; padding: 6pt 5pt; color: #242424;
+    border-radius: 2pt; }
+.moin-tabs .moin-tab-titles a:hover { background-color: #e0e0e0; }
+.moin-tab-titles a.moin-current-tab { background-color: #b3b3b3; margin: 0pt; }
+
+#moin-usersettings .moin-float-fix { display: flex; justify-content: end; }
