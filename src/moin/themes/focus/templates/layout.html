@@ -158,7 +158,7 @@
 
         <div id="moin-page" role="main" lang="{{ theme_supp.content_lang }}" dir="{{ theme_supp.content_dir }}">
             <div id="top-bar">
-                {% block header_itemviews %}{% endblock %}
+                {% block header_itemviews %}{{ itemviews }}{% endblock %}
             </div>
 
             {% block item -%}
