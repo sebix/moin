@@ -14,7 +14,6 @@
 html, body { max-width: 100vw; max-height: 100vh; overflow-x: hidden;}
 h1, h2, h3, h4, h5, h6 { border-bottom: none; }
 h2 { margin-top: 1.6em; margin-bottom: 0.5em; }
-br { display: none; }
 
 #moin-main-wrapper { display: flex; }
 .moin-logo { text-align: start; }
@@ -108,13 +107,22 @@ header a:visited, #top-bar a:visited { color: #242424; }
 
 .moin-form dl { margin-top: 8pt; margin-bottom: 6pt; }
 
-div.hint { min-height: unset; margin-top: 0pt; margin-left: 1pt; padding: 0pt;
+div.hint, div.tip { min-height: unset; margin-top: 0pt; margin-left: 1pt; padding: 0pt;
     border: none; font-size: 0.9rem; color: #383838; }
 div.hint::before { font-family: FontAwesome; content: "\f0eb"; padding: 0pt;
     margin-right: 4pt; }
+div.tip::before { font-family: FontAwesome; content: "\f0eb"; padding: 0pt;
+    margin-right: 4pt; }
 
-.moin-tabs { margin-bottom: 20pt; }
-.moin-tab-titles { border: none; padding-left: 0pt; display: flex; flex-wrap: wrap;
+div.attention > ol, div.attention > ul, div.attention > p, div.caution > ol,
+div.caution > ul, div.caution > p, div.danger > ol, div.danger > ul, div.danger > p,
+div.error > ol, div.error > ul, div.error > p, div.hint > ol, div.hint > ul,
+div.hint > p, div.important > ol, div.important > ul, div.important > p, div.note > ol,
+div.note > ul, div.note > p, div.tip > ol, div.tip > ul, div.tip > p, div.warning > ol,
+div.warning > ul, div.warning > p { padding-left: 30pt; }
+
+.moin-tabs { margin-bottom: 20pt; border-bottom: 1pt solid #d9d9d9; }
+.moin-tab-titles { border: none; padding-left: 0pt; display: flex; flex-wrap: wrap-reverse;
     row-gap: 4pt; column-gap: 6pt; }
 .moin-tab-titles li { padding: 0pt; margin: 0pt; border: none; }
 .moin-tab-titles a { border-radius: 0pt; border: none; background-color: white; }
@@ -123,5 +131,21 @@ div.hint::before { font-family: FontAwesome; content: "\f0eb"; padding: 0pt;
     border-radius: 2pt; }
 .moin-tabs .moin-tab-titles a:hover { background-color: #e0e0e0; }
 .moin-tab-titles a.moin-current-tab { background-color: #b3b3b3; margin: 0pt; }
+.moin-tab-titles a.moin-current-tab:hover { background-color: #b3b3b3; cursor: default; }
+
+#moin-modify br { display: none; }
 
 #moin-usersettings .moin-float-fix { display: flex; justify-content: end; }
+#usersettings_ui { width: fit-content; }
+#moin-usersettings form { width: fit-content; margin: 0 auto; }
+#moin-usersettings dt { float: none; width: unset; padding-right: 0pt; }
+#moin-usersettings .moin-form dl { display: grid; width: fit-content;
+    grid: auto-flow / max-content max-content; column-gap: 14pt; }
+#moin-usersettings .moin-form dd { width: unset; }
+#moin-usersettings .moin-form dd input[type="text"],
+#moin-usersettings .moin-form dd input[type="password"],
+#moin-usersettings .moin-form dd input[type="email"] { box-sizing: border-box;
+    width: 100%; }
+#moin-usersettings .moin-form dd input[type="checkbox"] { width: fit-content; }
+#quicklinks textarea, #subscriptions textarea { box-sizing: border-box; width: 100%; }
+#quicklinks div.tip, #subscriptions div.tip { width: unset; }
