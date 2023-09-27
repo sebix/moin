@@ -32,7 +32,7 @@ h2 { margin-top: 1.6em; margin-bottom: 0.5em; }
 #moin-search-submit { min-width: 0pt;
     background: url("../icons/magnifying-glass-solid.svg") center center no-repeat; }
 
-#moin-page { min-width: 0pt; }
+#moin-page { min-width: 0pt; margin: 0pt auto; }
 
 header { min-width: 120pt; min-height: 100vh; margin-right: 18pt; padding-top: 8pt;
     padding-left: 8pt; box-shadow: 2pt 0pt 10pt 2pt rgba(0, 0, 0, 0.1); }
@@ -64,7 +64,7 @@ header a:visited, #top-bar a:visited { color: #242424; }
 }
 #moin-credits-container { display: flex; align-items: end; justify-content: space-between; }
 
-#moin-content { width: 98%; }
+#moin-content { width: 98%; max-width: 1100pt; }
 
 .moin-flash-info { background-color: #e4f2ff; border: 1pt solid #81c3ff;
     border-radius: 2pt; }
