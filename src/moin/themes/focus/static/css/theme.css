@@ -32,7 +32,7 @@ h2 { margin-top: 1.6em; margin-bottom: 0.5em; }
 #moin-search-submit { min-width: 0pt;
     background: url("../icons/magnifying-glass-solid.svg") center center no-repeat; }
 
-#moin-page { min-width: 0pt; margin: 0pt auto; }
+#moin-page { min-width: 0pt; }
 
 header { min-width: 120pt; min-height: 100vh; margin-right: 18pt; padding-top: 8pt;
     padding-left: 8pt; box-shadow: 2pt 0pt 10pt 2pt rgba(0, 0, 0, 0.1); }
@@ -64,7 +64,7 @@ header a:visited, #top-bar a:visited { color: #242424; }
 }
 #moin-credits-container { display: flex; align-items: end; justify-content: space-between; }
 
-#moin-content { width: 98%; max-width: 1100pt; }
+#moin-content { width: 98%; max-width: 1100pt; min-height: 80vh; }
 
 .moin-flash-info { background-color: #e4f2ff; border: 1pt solid #81c3ff;
     border-radius: 2pt; }
@@ -149,3 +149,7 @@ div.warning > ul, div.warning > p { padding-left: 30pt; }
 #moin-usersettings .moin-form dd input[type="checkbox"] { width: fit-content; }
 #quicklinks textarea, #subscriptions textarea { box-sizing: border-box; width: 100%; }
 #quicklinks div.tip, #subscriptions div.tip { width: unset; }
+
+@media (min-width: 1000pt) {
+    #moin-page { margin: 0pt auto; }
+}
