@@ -150,6 +150,10 @@ div.warning > ul, div.warning > p { padding-left: 30pt; }
 #quicklinks textarea, #subscriptions textarea { box-sizing: border-box; width: 100%; }
 #quicklinks div.tip, #subscriptions div.tip { width: unset; }
 
+.moin-tags a, .moin-tags a:visited { display: inline-block; padding: 4pt; color: #242424; border-radius: 2pt;
+    min-width: 40pt; }
+.moin-tags a:link:hover, .moin-tags a:visited:hover { color: white; background-color: var(--accent-hover) }
+
 @media (min-width: 1000pt) {
     #moin-page { margin: 0pt auto; }
 }
