@@ -1,6 +1,8 @@
 :root {
     --accent: #2269db;
     --accent-hover: #4382e7;
+    --accent-light: #83b2ff;
+    --accent-lighter: #e5edfd;
     --link: #2269db;
     --negative: #cc4343;
 }
@@ -15,6 +17,9 @@
 html, body { max-width: 100vw; max-height: 100vh; overflow-x: hidden;}
 h1, h2, h3, h4, h5, h6 { border-bottom: none; }
 h2 { margin-top: 1.6em; margin-bottom: 0.5em; }
+input[type="checkbox"] { appearance: none; border: 2pt solid #242424;
+    height: 12pt; width: 12pt; transition: background-color 80ms linear; }
+input[type="checkbox"]:checked { background-color: var(--accent-light); }
 
 #moin-main-wrapper { display: flex; }
 .moin-logo { text-align: start; }
@@ -71,7 +76,7 @@ header a:visited, #top-bar a:visited { color: #242424; }
 #moin-content { width: 98%; max-width: 1100pt; min-height: 80vh; }
 
 .moin-flash { border-radius: 2pt; }
-.moin-flash-info { background-color: #e4f2ff; border: 1pt solid #81c3ff; }
+.moin-flash-info { background-color: #e4f2ff; border: 1pt solid var(--accent-light); }
 .moin-flash-info::before { font-family: FontAwesome; content: "\f05a"; color: #415e79; }
 .moin-flash-warning { background-color: #ffe4e4; border: 1pt solid #ff8181; }
 .moin-flash-warning::before { font-family: FontAwesome; content: "\f071"; color: #a71818; }
@@ -173,10 +178,10 @@ div.warning > ul, div.warning > p { padding-left: 30pt; }
 .moin-tags a:link:hover, .moin-tags a:visited:hover { color: white; background-color: var(--accent-hover) }
 
 #moin-global-history tr td { border: none; }
-.moin-history-day-banner { background-color: #e5edfd; }
+.moin-history-day-banner { background-color: var(--accent-lighter); }
 
-#moin-content table > thead { background-color: #e5edfd; }
-tr > th { background-color: #e5edfd; }
+#moin-content table > thead { background-color: var(--accent-lighter); }
+tr > th { background-color: var(--accent-lighter); }
 
 #moin-initials { display: flex; flex-wrap: wrap; column-gap: 4pt; row-gap: 4pt;
     width: 100%; margin: 1em 0pt; }
