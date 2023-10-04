@@ -40,7 +40,7 @@ input[type="checkbox"]:checked { background-color: var(--accent-light); }
 
 #moin-page { min-width: 0pt; }
 
-header { min-width: 120pt; min-height: 100vh; margin-right: 18pt; padding-top: 8pt;
+header { min-width: 140pt; min-height: 100vh; margin-right: 18pt; padding-top: 8pt;
     padding-left: 8pt; box-shadow: 2pt 0pt 10pt 2pt rgba(0, 0, 0, 0.1); }
 header ol, header ul { padding-left: 0pt; }
 header li::marker { display: none; }
@@ -73,7 +73,8 @@ header a:visited, #top-bar a:visited { color: #242424; }
 #moin-credits-container { display: flex; align-items: end; justify-content: space-between;
     column-gap: 20pt; }
 
-#moin-content { width: 98%; max-width: 1100pt; min-height: 80vh; }
+#moin-content { min-height: 80vh; }
+#moin-content-data { max-width: 1100pt; }
 
 .moin-flash { border-radius: 2pt; }
 .moin-flash-info { background-color: #e4f2ff; border: 1pt solid var(--accent-light); }
