@@ -219,6 +219,12 @@ tr > th { background-color: var(--accent-lighter); }
 .moin-mime-application::before { font-family: FontAwesome; content: "\e4e5"; }
 .moin-mime-audio::before { font-family: FontAwesome; content: "\f025"; }
 
+#moin-create-table tbody tr th { border: none; }
+#moin-create-table tbody tr > td { display: flex; flex-wrap: wrap; row-gap: 6pt;
+    padding-left: 4pt; margin-bottom: 16pt; border: none; }
+
+.zebra tbody tr:nth-child(2n), .zebra > tr:nth-child(2n+1) { background-color: unset; }
+
 @media (max-width: 700pt) {
     #moin-main-wrapper { flex-direction: column; }
     header { min-height: unset; margin-right: 0pt; }
