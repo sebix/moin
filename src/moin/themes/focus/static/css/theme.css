@@ -48,7 +48,7 @@ header li::marker { display: none; }
 #moin-searchform input.moin-search-query:focus { background-color: #ecf2fd;
     border-bottom: 1pt solid var(--accent); outline: none; }
 
-#top-bar { overflow-x: auto; padding: 6pt 0; }
+#top-bar { overflow-x: auto; padding: 6pt 0; margin-right: 10pt; }
 #top-bar ol, #top-bar ul { list-style-type: none; }
 #top-bar ul { display: flex; column-gap: 10pt; padding-left: 0pt; }
 #top-bar .fa { display: none; }
