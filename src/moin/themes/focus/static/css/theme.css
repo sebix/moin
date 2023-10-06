@@ -102,6 +102,7 @@ header a:visited, #top-bar a:visited { color: #242424; }
     clear: none;
     margin: unset;
 }
+.moin-form dd input { width: 12pt; }
 .moin-edit-help { box-sizing: border-box; float: unset; padding: 0pt; }
 .moin-edit-help.moin-button { display: block; }
 .moin-edit-help a { height: 100%; width: calc(100% - 12pt); display: flex; align-items: center;
@@ -170,7 +171,6 @@ div.warning > ul, div.warning > p { padding-left: 30pt; }
 #moin-usersettings .moin-form dd input[type="password"],
 #moin-usersettings .moin-form dd input[type="email"] { box-sizing: border-box;
     width: 100%; }
-#moin-usersettings .moin-form dd input[type="checkbox"] { width: fit-content; }
 #quicklinks textarea, #subscriptions textarea { box-sizing: border-box; width: 100%; }
 #quicklinks div.tip, #subscriptions div.tip { width: unset; }
 
