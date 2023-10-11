@@ -231,9 +231,14 @@ tr > th { background-color: var(--accent-lighter); }
 @media (max-width: 700pt) {
     #moin-main-wrapper { flex-direction: column; }
     header { min-height: unset; margin-right: 0pt; }
+    header a { white-space: initial; }
     .moin-sitename { font-size: 1.2rem; }
     #moin-content { padding: 0pt 8pt; }
+
     #moin-username, #moin-navibar { flex-direction: row; flex-wrap: wrap; }
+    #moin-username a, #moin-navibar a { display: flex; column-gap: 6pt; white-space: nowrap; }
+    #moin-username a span{ white-space: pre; }
+
     #moin-content-data { margin-right: 0pt; }
     #usersettings_ui, #moin-usersettings form { width: unset; }
     #moin-usersettings dl { column-gap: 10pt; row-gap: 6pt; max-width: 100vw; }
