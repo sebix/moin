@@ -49,16 +49,48 @@ header a { word-break: break-all; white-space: inherit; box-sizing: border-box; 
 #moin-searchform input.moin-search-query:focus { background-color: #ecf2fd;
     border-bottom: 1pt solid var(--accent); outline: none; }
 
-#top-bar { overflow-x: auto; padding: 6pt 0; margin-right: 10pt; }
+#top-bar { box-sizing: border-box; width: 100%; height: 32pt; overflow-x: auto; padding: 10pt 0;
+    margin-right: 10pt; z-index: 1000; }
 #top-bar ol, #top-bar ul { list-style-type: none; }
 #top-bar ul { display: flex; column-gap: 10pt; padding-left: 0pt; }
-#top-bar .fa { display: none; }
+#top-bar .moin-itemviews.panel { display: flex; column-gap: 10pt; padding-left: 0pt; }
+#top-bar .moin-itemviews.panel.mobile { display: none; }
 #top-bar a { padding: 4pt; border-radius: 2pt; }
 
 #top-bar .moin-panel-heading { display: none; }
 #top-bar a { white-space: nowrap; }
 header a, header a:link, header a:visited,
 #top-bar a, #top-bar a:visited { color: #242424; }
+
+#top-bar-menu label { padding: 4pt; border-radius: 2pt; }
+#top-bar-menu label:hover { background-color: #d6d6d6bd; cursor: pointer; }
+#top-bar-menu #top-bar-menu-content {
+    display: flex;
+    flex-direction: column;
+    row-gap: 7pt;
+    min-width: 120pt;
+    padding: 6pt 4pt;
+    margin-top: 4pt;
+    align-items: stretch;
+    z-index: 10;
+    transform-origin: top;
+    transform: scaleY(0);
+    transition: transform 80ms linear;
+}
+#top-bar-menu-switch { display: none; } 
+#top-bar-menu-switch:checked ~ #top-bar-menu-content {
+    transform: scaleY(1);
+    box-shadow: 0pt 2pt 4pt 2pt rgba(0, 0, 0, 0.25);
+}
+#top-bar-menu-switch:checked ~ #top-bar-menu-label i{
+    transition: transform 80ms linear;
+} 
+#top-bar-menu-switch:checked ~ #top-bar-menu-label i {
+    transform: rotate(-180deg);
+}
+#top-bar-menu-content a { display: block; width: 100%; box-sizing: border-box; }
+
+#top-bar, #top-bar-menu-content { position: fixed; background-color: white; }
 
 .moin-breadcrumb { margin: 14pt 0; }
 .moin-breadcrumb .moin-panel-heading { font-size: 1.1rem; margin-bottom: 4pt; }
@@ -76,10 +108,10 @@ header a, header a:link, header a:visited,
 #moin-credits-container { display: flex; align-items: end; justify-content: space-between;
     column-gap: 20pt; }
 
-#moin-content { min-height: 80vh; }
+#moin-content { min-height: 80vh; margin-top: 36pt; }
 #moin-content-data { max-width: 1100pt; margin-right: 18pt; }
 
-.moin-flash { border-radius: 2pt; }
+.moin-flash { border-radius: 2pt; margin-right: 18pt; }
 .moin-flash-info { background-color: #e4f2ff; border: 1pt solid var(--accent-light); }
 .moin-flash-info::before { font-family: FontAwesome; content: "\f05a"; color: #415e79; }
 .moin-flash-warning { background-color: #ffe4e4; border: 1pt solid #ff8181; }
@@ -240,6 +272,12 @@ tr > th { background-color: var(--accent-lighter); }
     #moin-username a span{ white-space: pre; }
 
     #moin-content-data { margin-right: 0pt; }
+
+    #top-bar { height: fit-content; }
+    #top-bar .moin-itemviews.panel.mobile { display: flex; }
+    #top-bar .moin-itemviews.panel.desktop { display: none; }
+    #top-bar .fa { display: none; }
+    #top-bar, #top-bar-menu-content { position: relative; }
     #usersettings_ui, #moin-usersettings form { width: unset; }
     #moin-usersettings dl { column-gap: 10pt; row-gap: 6pt; max-width: 100vw; }
     #moin-usersettings dt { max-width: 44vw; }
