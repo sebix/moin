@@ -11,6 +11,7 @@
 {% set item = item %}
 {% set not_trash =  not item_is_deleted if item_is_deleted is defined else True %}
 {% set icon_classes = theme_supp.get_endpoint_iconmap() %}
+{% set current_path = request.path %}
 
 {%- macro a_label(icon_class, label) %}
     <i class="{{ icon_class }}"></i>
@@ -21,10 +22,19 @@
     {%- for endpoint, label, title, check_exists in cfg.item_views if not endpoint in cfg.endpoints_excluded %}
         {% set icon_class = icon_classes[endpoint] %}
         {%- if not check_exists or check_exists and exists %}
-            {%- if endpoint == 'frontend.modify_item' and user.may.write(fqname) and not_trash %}
-                <div>
-                    <a class="moin-modify-button" href="{{ url_for(endpoint, item_name = fqname) }}" title="{{ title }}" rel="nofollow">{{ a_label(icon_class, label) }}</a>
-                </div>
+            {%- if  user.may.write(fqname) and not_trash %}
+                {%- if current_path.startswith("/+")
+                    and endpoint == 'frontend.show_item'
+                %}
+                    <div>
+                        <a href="{{ url_for(endpoint, item_name = fqname) }}" title="{{ title }}" rel="nofollow">{{ a_label(icon_class, label) }}</a>
+                    </div>
+                {%- elif not current_path.startswith("/+")
+                    and endpoint == 'frontend.modify_item' %}
+                    <div>
+                        <a class="moin-modify-button" href="{{ url_for(endpoint, item_name = fqname) }}" title="{{ title }}" rel="nofollow">{{ a_label(icon_class, label) }}</a>
+                    </div>
+                {%- endif %}
             {%- endif %}
 
         {%- endif %}
@@ -41,8 +51,17 @@
             {%- for endpoint, label, title, check_exists in cfg.item_views if not endpoint in cfg.endpoints_excluded %}
             {% set icon_class = icon_classes[endpoint] %}
             {%- if not check_exists or check_exists and exists %}
+                {%- if  user.may.write(fqname)
+                    and not_trash
+                    and endpoint == 'frontend.modify_item'
+                    and current_path.startswith("/+")
+                    and not current_path.startswith("/+modify/")
+                %}
+                    <div>
+                        <a class="moin-modify-button" href="{{ url_for(endpoint, item_name = fqname) }}" title="{{ title }}" rel="nofollow">{{ a_label(icon_class, label) }}</a>
+                    </div>
+                {%- endif %}
                 {%- if endpoint in [
-                    'frontend.show_item',
                     'frontend.show_item_meta',
                     'frontend.history',
                     'frontend.download_item',
