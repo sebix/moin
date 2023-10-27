@@ -26,10 +26,10 @@ window.onload = function () {
         headers.push(element)
     });
 
+    // Transform headers to permalinks and make anchor symbols only
+    // appearing when users hover over a header
     for (const header of headers) {
         for (const child of header.children) {
-            console.log(child);
-            console.log(child.classList);
             if (child.classList.contains('moin-permalink')) {
                 header.addEventListener ('click', () => {
                     child.click()
@@ -44,4 +44,18 @@ window.onload = function () {
             }
         }
     }
+
+    // Close menu in top bar when user clicks on something else
+    const topbarMenu = document.getElementById('top-bar-menu')
+
+    topbarMenu.addEventListener('click', (event) => {
+        event.stopPropagation()
+    })
+    
+    document.body.addEventListener('click', () => {
+        const topbarMenuSwitch = document.getElementById('top-bar-menu-switch')
+        if (topbarMenuSwitch.checked) {
+            topbarMenuSwitch.click()
+        }
+    })
 }
