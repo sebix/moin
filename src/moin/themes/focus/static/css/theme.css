@@ -140,6 +140,10 @@ header a, header a:link, header a:visited,
 #popup .popup-submit:hover { background-color: var(--accent-hover); }
 
 #moin-modify { width: 1100pt; max-width: 95%; }
+#moin-modify .submit-buttons { width: fit-content; position: sticky; background-color: white;
+    padding: 8pt 12pt; margin-left: auto; box-shadow: 0pt 0pt 6pt 2pt rgba(0, 0, 0, 0.2);
+    margin-top: 22pt; box-sizing: border-box; bottom: 20pt; }
+#moin-modify form { position: relative; }
 .moin-form input[type="submit"].moin-modify-submit,
 .moin-form .moin-load-draft, .moin-form .moin-cancel {
     float: none;
