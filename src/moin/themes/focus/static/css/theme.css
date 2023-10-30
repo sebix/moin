@@ -299,6 +299,8 @@ tr > th { background-color: var(--accent-lighter); }
     .moin-form dt { text-align: start; }
     #moin-pageinfo { margin-bottom: 10pt; }
     #moin-footer { padding: 0pt 8pt; }
+
+    .fa.global-history { height: 22pt; width: 22pt; }
 }
 
 @media (min-width: 1000pt) {
