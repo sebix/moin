@@ -73,14 +73,14 @@
                         <button class="moin-button" type="button" >{{ _("Load Draft") }}</button>
                         {% set warning = _("Clicking this button will delete draft!") %}
                     {% endif %}
-                    {{ gen.input(type='submit', id='moin-cancel-text-button', name='cancel', value=form.cancel_label,
-                        class='moin-button moin-modify-submit negative', onclick="$('#moin-modify').removeClass('moin-changed-input')",
-                        title=warning) }}
+                    {{ gen.input(type='submit', id='moin-save-text-button', value=form.submit_label,
+                        class='moin-button moin-modify-submit', title=warning) }}
                     {{ gen.input(type='submit', id='moin-preview-text-button', name='preview', value=form.preview_label,
                         class='moin-button moin-modify-submit', onclick="$('#moin-modify').removeClass('moin-changed-input')",
                         title=warning) }}
-                    {{ gen.input(type='submit', id='moin-save-text-button', value=form.submit_label,
-                        class='moin-button moin-modify-submit', title=warning) }}
+                    {{ gen.input(type='submit', id='moin-cancel-text-button', name='cancel', value=form.cancel_label,
+                        class='moin-button moin-modify-submit negative', onclick="$('#moin-modify').removeClass('moin-changed-input')",
+                        title=warning) }}
                 </div>
 
             {% endif %}
