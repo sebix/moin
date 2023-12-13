@@ -152,7 +152,7 @@ header a, header a:link, header a:visited,
     clear: none;
     margin: unset;
 }
-.moin-form dd input { width: 12pt; }
+.moin-form dd input[type="checkbox"] { width: 12pt; }
 .moin-edit-help { float: unset; padding: 0pt; }
 .moin-edit-help.moin-button { display: block; }
 .moin-edit-help a { height: 100%; width: 100%; display: flex; align-items: center;
