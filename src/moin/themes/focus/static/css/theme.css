@@ -235,7 +235,7 @@ tr > th { background-color: var(--accent-lighter); }
 
 #moin-initials { display: flex; flex-wrap: wrap; column-gap: 4pt; row-gap: 4pt;
     width: 100%; margin: 1em 0pt; }
-#moin-initials a { min-width: 20pt; height: 12pt; border: 2pt solid var(--accent) }
+#moin-initials a { min-width: 20pt; height: fit-content; border: 2pt solid var(--accent) }
 #moin-initials a:hover { color: white; background-color: var(--accent-hover);
     border: 2pt solid var(--accent-hover) }
 #moin-initials a.selected,
