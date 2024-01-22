@@ -159,6 +159,8 @@ header a, header a:link, header a:visited,
     padding: 0pt 6pt; }
 .moin-form .submit-buttons { display: flex; column-gap: 8pt; justify-content: end;
     margin: 12pt 0;
+    float: right;
+    flex-direction: row-reverse;
 }
 .moin-form button, .moin-form input[type="submit"] { clear: none; margin: unset; }
 .moin-form button, .moin-button, .moin-form input[type="submit"] { display: flex;
