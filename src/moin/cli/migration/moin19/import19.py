@@ -29,10 +29,11 @@ from .macros import MonthCalendar  # noqa
 from .macros import PageList  # noqa
 
 from moin.app import create_app
+from moin.cli._util import drop_and_recreate_index
 from moin.constants.keys import *  # noqa
 from moin.constants.contenttypes import CONTENTTYPE_USER, CHARSET19, CONTENTTYPE_MARKUP_OUT
 from moin.constants.itemtypes import ITEMTYPE_DEFAULT
-from moin.constants.namespaces import NAMESPACE_DEFAULT, NAMESPACE_USERPROFILES
+from moin.constants.namespaces import NAMESPACE_DEFAULT, NAMESPACE_USERPROFILES, NAMESPACE_USERS
 from moin.constants.rights import SPECIAL_USERS
 from moin.storage.error import NoSuchRevisionError
 from moin.utils.mimetype import MimeType
@@ -99,22 +100,25 @@ def migr_logging(msg_id, log_msg):
     if migr_stat[msg_id] < migr_warn_max:
         logging.warning(log_msg)
     elif migr_stat[msg_id] == migr_warn_max:
-        logging.warning("{}: further messages printed to debug log only.".format(msg_id))
+        logging.warning(f"{msg_id}: further messages printed to debug log only.")
         logging.debug(log_msg)
     else:
         logging.debug(log_msg)
 
 
-def migr_statistics():
+def migr_statistics(unknown_macros):
     logging.info("Migration statistics:")
-    logging.info("Users:       {0:6d}".format(migr_stat['users']))
-    logging.info("Items:       {0:6d}".format(migr_stat['items']))
-    logging.info("Revisions:   {0:6d}".format(migr_stat['revs']))
-    logging.info("Attachments: {0:6d}".format(migr_stat['attachments']))
+    logging.info(f"Users:       {migr_stat['users']:6d}")
+    logging.info(f"Items:       {migr_stat['items']:6d}")
+    logging.info(f"Revisions:   {migr_stat['revs']:6d}")
+    logging.info(f"Attachments: {migr_stat['attachments']:6d}")
 
     for message in ['missing_user', 'missing_file', 'del_item']:
         if migr_stat[message] > 0:
-            logging.info("Warnings:    {0:6d} - {1}".format(migr_stat[message], message))
+            logging.info(f"Warnings:    {migr_stat[message]:6d} - {message}")
+
+    if len(unknown_macros) > 0:
+        logging.info(f"Warnings:    {len(unknown_macros):6d} - unknown macros {str(unknown_macros)[1:-1]}")
 
 
 @cli.command('import19', help='Import content and user data from a moin 1.9 wiki')
@@ -122,9 +126,12 @@ def migr_statistics():
               help='moin 1.9 data_dir (contains pages and users subdirectories).')
 @click.option('--markup_out', '-m', type=click.Choice(CONTENTTYPE_MARKUP_OUT.keys()),
               required=False, default='moinwiki', help='target markup.')
-def ImportMoin19(data_dir=None, markup_out=None):
+@click.option('--namespace', '-n', type=str, required=False, default=NAMESPACE_DEFAULT,
+              help='target namespace, e.g. used for members of a wikifarm.')
+def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
     '''  Import content and user data from a moin wiki with version 1.9 '''
 
+    target_namespace = namespace
     flaskg.add_lineno_attr = False
     flaskg.item_name2id = {}
     userid_old2new = {}
@@ -144,7 +151,8 @@ def ImportMoin19(data_dir=None, markup_out=None):
             backend.store(rev.meta, rev.data)
 
     logging.info("PHASE2: Converting Pages and Attachments ...")
-    for rev in PageBackend(data_dir, deleted_mode=DELETED_MODE_KILL, default_markup='wiki'):
+    for rev in PageBackend(data_dir, deleted_mode=DELETED_MODE_KILL,
+                           default_markup='wiki', target_namespace=target_namespace):
         for user_name in user_names:
             if rev.meta[NAME][0] == user_name or rev.meta[NAME][0].startswith(user_name + '/'):
                 rev.meta[NAMESPACE] = 'users'
@@ -173,7 +181,7 @@ def ImportMoin19(data_dir=None, markup_out=None):
     refs_conv = reg.get(type_moin_document, type_moin_document, items='refs')
     for item_name, (revno, namespace) in sorted(last_moin19_rev.items()):
         try:
-            logging.debug('Processing item "{0}", namespace "{1}", revision "{2}"'.format(item_name, namespace, revno))
+            logging.debug(f'Processing item "{item_name}", namespace "{namespace}", revision "{revno}"')
         except UnicodeEncodeError:
             logging.debug('Processing item "{0}", namespace "{1}", revision "{2}"'.format(
                 item_name.encode('ascii', errors='replace'), namespace, revno))
@@ -187,21 +195,27 @@ def ImportMoin19(data_dir=None, markup_out=None):
         dom.set(moin_page.page_href, str(iri))
         refs_conv(dom)
 
-        # migrate itemlinks to users namespace
+        # migrate itemlinks to users namespace or new target namespace
+        # links to items with the name of a custom namespace and their subitems are kept untouched
         itemlinks_19 = refs_conv.get_links()
-        itemlinks2chg = []
+        user_itemlinks2chg = []
+        namespace_itemlinks2chg = []
         for link in itemlinks_19:
-            if link in users_itemlist:
-                itemlinks2chg.append(link)
-        if len(itemlinks2chg) > 0:
-            migrate_users_links(dom, itemlinks2chg)
+            if link in users_itemlist or link.split('/')[0] in users_itemlist:
+                user_itemlinks2chg.append(link)
+            elif link not in custom_namespaces and link.split('/')[0] not in custom_namespaces:
+                namespace_itemlinks2chg.append(link)
+        if len(user_itemlinks2chg) > 0:
+            migrate_itemlinks(dom,  NAMESPACE_USERS, user_itemlinks2chg)
+        if len(namespace_itemlinks2chg) > 0:
+            migrate_itemlinks(dom, target_namespace, namespace_itemlinks2chg)
 
         # migrate macros that need update from 1.9 to 2.0
         migrate_macros(dom)  # in-place conversion
 
         out = conv_out(dom)
         out = out.encode(CHARSET19)
-        if len(itemlinks2chg) > 0:
+        if len(user_itemlinks2chg) > 0 or len(namespace_itemlinks2chg):
             refs_conv(dom)  # refresh changed itemlinks
         meta[ITEMLINKS] = refs_conv.get_links()
         meta[ITEMTRANSCLUSIONS] = refs_conv.get_transclusions()
@@ -216,24 +230,25 @@ def ImportMoin19(data_dir=None, markup_out=None):
         # bumping modified time makes global and item history views more useful
         meta[MTIME] = meta[MTIME] + 1
         meta[COMMENT] = 'Converted moin 1.9 markup to ' + markup_out + ' markup'
+        if meta[NAME][0].endswith('Group') and meta[USERGROUP]:
+            msg = 'Moin1.x user list moved to User Group metadata; item content ignored. Use ShowUserGroup macro. '
+            meta[COMMENT] = msg + meta[COMMENT]
+        if meta[NAME][0].endswith('Dict') and meta[WIKIDICT]:
+            msg = 'Moin1.x Wiki Dict data moved to Wiki Dict metadata; item content ignored. Use ShowWikiDict macro. '
+            meta[COMMENT] = msg + meta[COMMENT]
         meta[CONTENTTYPE] = CONTENTTYPE_MARKUP_OUT[markup_out]
         del meta[DATAID]
         out.seek(0)
         backend.store(meta, out)
 
     logging.info("PHASE4: Rebuilding the index ...")
-    indexer.close()
-    indexer.destroy()
-    logging.debug("Create index")
-    indexer.create()
-    logging.debug("Rebuild index")
-    indexer.rebuild()
-    logging.debug("Optimize index")
-    indexer.optimize_index()
-    indexer.open()
+    drop_and_recreate_index(app.storage)
 
     logging.info("Finished conversion!")
-    migr_statistics()
+    if hasattr(conv_out, 'unknown_macro_list'):
+        migr_statistics(unknown_macros=conv_out.unknown_macro_list)
+    else:
+        migr_statistics([])
 
 
 class KillRequested(Exception):
@@ -246,6 +261,7 @@ class PageBackend:
     """
     def __init__(self, path, deleted_mode=DELETED_MODE_KEEP,
                  default_markup='wiki',
+                 target_namespace='',
                  item_category_regex=r'(?P<all>Category(?P<key>(?!Template)\S+))'):
         """
         :param path: storage path (data_dir)
@@ -259,11 +275,13 @@ class PageBackend:
                                       keep their attachments. (default)
         :param default_markup: used if a page has no #format line, moin 1.9's default
                                'wiki' and we also use this default here.
+        :param target_namespace : target namespace
         """
         self._path = path
         assert deleted_mode in (DELETED_MODE_KILL, DELETED_MODE_KEEP, )
         self.deleted_mode = deleted_mode
         self.format_default = default_markup
+        self.target_namespace = target_namespace
         self.item_category_regex = re.compile(item_category_regex, re.UNICODE)
 
     def __iter__(self):
@@ -273,17 +291,16 @@ class PageBackend:
         for f in pages:
             itemname = unquoteWikiname(f)
             try:
-                item = PageItem(self, os.path.join(pages_dir, f), itemname)
+                item = PageItem(self, os.path.join(pages_dir, f), itemname, self.target_namespace)
             except KillRequested:
                 pass  # a message was already output
             except (IOError, AttributeError):
                 migr_logging('missing_file',
-                             "Missing file 'current' or 'edit-log' for {0}".format(
-                                 os.path.normcase(os.path.join(pages_dir, f)))
+                             f"Missing file 'current' or 'edit-log' for {os.path.normcase(os.path.join(pages_dir, f))}"
                              )
 
             except Exception:
-                logging.exception(("PageItem {0!r} raised exception:".format(itemname))).encode('utf-8')
+                logging.exception(f"PageItem {itemname!r} raised exception:").encode('utf-8')
             else:
                 for rev in item.iter_revisions():
                     yield rev
@@ -295,14 +312,16 @@ class PageItem:
     """
     moin 1.9 page
     """
-    def __init__(self, backend, path, itemname):
+    def __init__(self, backend, path, itemname, target_namespace):
         self.backend = backend
         self.name = itemname
         self.path = path
+        self.target_namespace = target_namespace
         try:
-            logging.debug("Processing item {0}".format(itemname))
+
+            logging.debug(f"Processing item {itemname}")
         except UnicodeEncodeError:
-            logging.debug("Processing item {0}".format(itemname.encode('ascii', errors='replace')))
+            logging.debug(f"Processing item {itemname.encode('ascii', errors='replace')}")
         currentpath = os.path.join(self.path, 'current')
         with open(currentpath, 'r') as f:
             self.current = int(f.read().strip())
@@ -311,10 +330,10 @@ class PageItem:
         self.acl = None
         self.itemid = make_uuid()
         if backend.deleted_mode == DELETED_MODE_KILL:
-            revpath = os.path.join(self.path, 'revisions', '{0:08d}'.format(self.current))
+            revpath = os.path.join(self.path, 'revisions', f'{self.current:08d}')
             if not os.path.exists(revpath):
                 migr_logging('del_item',
-                             'Deleted item not migrated: {0}, last revision no: {1}'.format(itemname, self.current)
+                             f'Deleted item not migrated: {itemname}, last revision no: {self.current}'
                              )
                 raise KillRequested('deleted_mode wants killing/ignoring')
             else:
@@ -331,7 +350,7 @@ class PageItem:
         for fname in fnames:
             try:
                 revno = int(fname)
-                page_rev = PageRevision(self, revno, os.path.join(revisionspath, fname))
+                page_rev = PageRevision(self, revno, os.path.join(revisionspath, fname), self.target_namespace)
                 if parent_id:
                     page_rev.meta[PARENTID] = parent_id
                 parent_id = page_rev.meta[REVID]
@@ -340,7 +359,7 @@ class PageItem:
                 yield page_rev
 
             except Exception:
-                logging.exception("PageRevision {0!r} {1!r} raised exception:".format(self.name, fname))
+                logging.exception(f"PageRevision {self.name!r} {fname!r} raised exception:")
 
     def iter_attachments(self):
         attachmentspath = os.path.join(self.path, 'attachments')
@@ -354,14 +373,14 @@ class PageItem:
                 yield AttachmentRevision(self.name, attachname, os.path.join(attachmentspath, fname),
                                          self.editlog, self.acl)
             except Exception:
-                logging.exception("AttachmentRevision {0!r}/{1!r} raised exception:".format(self.name, attachname))
+                logging.exception(f"AttachmentRevision {self.name!r}/{attachname!r} raised exception:")
 
 
 class PageRevision:
     """
     moin 1.9 page revision
     """
-    def __init__(self, item, revno, path):
+    def __init__(self, item, revno, path, target_namespace):
         item_name = item.name
         itemid = item.itemid
         editlog = item.editlog
@@ -379,8 +398,8 @@ class PageRevision:
                                         # if we have an entry there
                     }
             try:
-                revpath = os.path.join(item.path, 'revisions', '{0:08d}'.format(revno - 1))
-                previous_meta = PageRevision(item, revno - 1, revpath).meta
+                revpath = os.path.join(item.path, 'revisions', f'{revno - 1:08d}')
+                previous_meta = PageRevision(item, revno - 1, revpath, target_namespace).meta
                 # if this page revision is deleted, we have no on-page metadata.
                 # but some metadata is required, thus we have to copy it from the
                 # (non-deleted) revision revno-1:
@@ -394,19 +413,18 @@ class PageRevision:
             try:
                 editlog_data = editlog.find_rev(revno)
             except KeyError:
-                logging.warning('Missing edit log data: item = {0}, revision = {1}'.format(item_name, revno))
+                logging.warning(f'Missing edit log data: item = {item_name}, revision = {revno}')
                 if 0 <= revno <= item.current:
                     editlog_data = {  # make something up
                         ACTION: 'SAVE/DELETE',
                     }
                 else:
-                    raise NoSuchRevisionError('Item {0!r} has no revision {1} (not even a deleted one)!'.format(
-                        item.name, revno))
+                    raise NoSuchRevisionError(f'Item {item.name!r} has no revision {revno} (not even a deleted one)!')
         else:
             try:
                 editlog_data = editlog.find_rev(revno)
             except KeyError:
-                logging.warning('Missing edit log data: name = {0}, revision = {1}'.format(item_name, revno))
+                logging.warning(f'Missing edit log data: name = {item_name}, revision = {revno}')
                 if 1 <= revno <= item.current:
                     editlog_data = {  # make something up
                         NAME: [item.name],
@@ -429,21 +447,27 @@ class PageRevision:
         meta[ITEMID] = itemid
         meta[REVID] = make_uuid()
         meta[REV_NUMBER] = revno
-        meta[NAMESPACE] = NAMESPACE_DEFAULT
+        meta[NAMESPACE] = target_namespace
         meta[ITEMTYPE] = ITEMTYPE_DEFAULT
+        if LANGUAGE not in meta:
+            meta[LANGUAGE] = app.cfg.language_default
         if meta[NAME][0].endswith('Template'):
             if TAGS in meta:
                 meta[TAGS].append(TEMPLATE)
             else:
                 meta[TAGS] = [TEMPLATE]
+        if meta[NAME][0].endswith('Group'):
+            meta[USERGROUP] = self._parse_acl_list(content)
+        if meta[NAME][0].endswith('Dict'):
+            meta[WIKIDICT] = self._parse_wikidict(content)
+
         # if this revision matches a custom namespace defined in wikiconfig,
         # then modify the meta data for namespace and name
         for custom_namespace in custom_namespaces:
             if meta[NAME][0] == custom_namespace:
                 # cannot have itemname == namespace_name, so we rename. XXX may create an item with duplicate name
                 new_name = app.cfg.root_mapping.get(meta[NAME][0], app.cfg.default_root)
-                logging.warning("Converting {0} to namespace:homepage {1}:{2}".format(
-                    meta[NAME][0], custom_namespace, new_name))
+                logging.warning(f"Converting {meta[NAME][0]} to namespace:homepage {custom_namespace}:{new_name}")
                 meta[NAMESPACE] = custom_namespace
                 meta[NAME] = [new_name]
                 break
@@ -493,11 +517,54 @@ class PageRevision:
             data = process_categories(meta, data, self.backend.item_category_regex)
         return data
 
+    def _parse_acl_list(self, content):
+        """
+        Return ACL list extracted from item's content
+        """
+        ret = []
+        first_user = True
+        start = 'not a hit yet'
+        lines = content.splitlines()
+        for line in lines:
+            if first_user:
+                parts = line.split('*')
+                if len(parts) == 2 and parts[1].startswith(' '):
+                    # only select lines with consistent indentation
+                    start = parts[0] + '* '
+                    first_user = False
+            if line.startswith(start):
+                parts = line.split('*')
+                if len(parts) == 2 and parts[1].startswith(' '):
+                    username = parts[1].strip()
+                    # link conversion may have enclosed all links with [[...]], maybe a leading +/-: "+[[UserName]]"
+                    if username.startswith('[[') and username.endswith(']]'):
+                        ret.append(username[2:-2])
+                    elif username.startswith('+[[') or username.startswith('-[[') and username.endswith(']]'):
+                        username.replace('[', '')
+                        ret.append(username[:-2])
+                    else:
+                        ret.append(username)
+        return ret
 
-def migrate_users_links(dom, itemlinks2chg):
+    def _parse_wikidict(self, content):
+        """
+        Return a dict of key, value pairs: {key: val,...}
+        """
+        ret = {}
+        lines = content.splitlines()
+        for line in lines:
+            line = line.strip()
+            parts = line.split(':: ')
+            if len(parts) == 2:
+                ret[parts[0]] = parts[1]
+        return ret
+
+
+def migrate_itemlinks(dom, namespace, itemlinks2chg):
     """ Walk the DOM tree and change itemlinks to users namespace
 
     :param dom: the tree to check for elements to migrate
+    :param namespace: target namespace
     :param itemlinks2chg: list of itemlinks to be changed
     :type dom: emeraldtree.tree.Element
     """
@@ -507,8 +574,8 @@ def migrate_users_links(dom, itemlinks2chg):
         if node.tag.name == 'a' and not isinstance(node.attrib[xlink.href], str):
             path_19 = str(node.attrib[xlink.href].path)
             if node.attrib[xlink.href].scheme == 'wiki.local' and path_19 in itemlinks2chg:
-                logging.debug("Changing link from " + path_19 + " to users/" + path_19)
-                node.attrib[xlink.href].path = 'users/' + path_19
+                logging.debug(f"Changing link from {path_19} to {namespace}/{path_19}")
+                node.attrib[xlink.href].path = f'{namespace}/{path_19}'
 
 
 def process_categories(meta, data, item_category_regex):
@@ -554,8 +621,8 @@ class AttachmentRevision:
                 ACTION: ACTION_SAVE,
             }
         migr_stat['attachments'] += 1
-        meta[NAME] = ['{0}/{1}'.format(item_name, attach_name)]
-        logging.debug('Migrating attachment {0}'.format(meta[NAME]))
+        meta[NAME] = [f'{item_name}/{attach_name}']
+        logging.debug(f'Migrating attachment {meta[NAME]}')
         if acl is not None:
             meta[ACL] = acl
         meta[CONTENTTYPE] = str(MimeType(filename=attach_name).content_type())
@@ -569,6 +636,8 @@ class AttachmentRevision:
         meta[REVID] = make_uuid()
         meta[REV_NUMBER] = 1
         meta[ITEMTYPE] = ITEMTYPE_DEFAULT
+        if LANGUAGE not in meta:
+            meta[LANGUAGE] = app.cfg.language_default
         meta[WIKINAME] = app.cfg.sitename  # old 1.9 sitename is not available
         for attr in (COMMENT, SUMMARY, ):
             meta[attr] = ""
@@ -668,7 +737,7 @@ def regenerate_acl(acl_string, acl_rights_valid=ACL_RIGHTS_CONTENTS):
                           ))
     result = ' '.join(result)
     if result != acl_string:
-        logging.debug("regenerate_acl {0!r} -> {1!r}".format(acl_string, result))
+        logging.debug(f"regenerate_acl {acl_string!r} -> {result!r}")
     return result
 
 
@@ -764,7 +833,7 @@ class UserRevision:
 
         # rename aliasname to display_name:
         metadata[DISPLAY_NAME] = metadata.get('aliasname')
-        logging.debug("Processing user {0} {1} {2}".format(metadata[NAME][0], self.uid, metadata[EMAIL]))
+        logging.debug(f"Processing user {metadata[NAME][0]} {self.uid} {metadata[EMAIL]}")
         migr_stat['users'] += 1
 
         # transfer subscribed_pages to subscription_patterns
@@ -845,22 +914,22 @@ class UserRevision:
         RECHARS = r'.^$*+?{\|('
         subscriptions = []
         for subscribed_item in subscribed_items:
-            logging.debug('User is subscribed to {0}'.format(subscribed_item))
+            logging.debug(f'User is subscribed to {subscribed_item}')
             if flaskg.item_name2id.get(subscribed_item):
-                subscriptions.append("{0}:{1}".format(ITEMID, flaskg.item_name2id.get(subscribed_item)))
+                subscriptions.append(f"{ITEMID}:{flaskg.item_name2id.get(subscribed_item)}")
             else:
                 wikiname = ""
                 if ":" in subscribed_item:
                     wikiname, subscribed_item = subscribed_item.split(":", 1)
 
                 if not any(x in subscribed_item for x in RECHARS):
-                    subscriptions.append("{0}:{1}:{2}".format(NAME, wikiname, subscribed_item))
+                    subscriptions.append(f"{NAME}:{wikiname}:{subscribed_item}")
                 elif (subscribed_item.endswith(".*") and len(subscribed_item) > 2
                         and not subscribed_item.endswith("/.*")
                         and not any(x in subscribed_item[:-2] for x in RECHARS)):
-                    subscriptions.append("{0}:{1}:{2}".format(NAMEPREFIX, wikiname, subscribed_item[:-2]))
+                    subscriptions.append(f"{NAMEPREFIX}:{wikiname}:{subscribed_item[:-2]}")
                 else:
-                    subscriptions.append("{0}:{1}:{2}".format(NAMERE, wikiname, subscribed_item))
+                    subscriptions.append(f"{NAMERE}:{wikiname}:{subscribed_item}")
 
         return subscriptions
 
@@ -882,7 +951,7 @@ class UserBackend:
                 try:
                     rev = UserRevision(self.path, uid)
                 except Exception:
-                    logging.exception("Exception in user item processing {0}".format(uid))
+                    logging.exception(f"Exception in user item processing {uid}")
                 else:
                     yield rev
 

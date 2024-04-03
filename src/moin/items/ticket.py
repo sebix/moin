@@ -134,7 +134,7 @@ class TicketForm(BaseModifyForm):
     meta = TicketMetaForm
     backrefs = TicketBackRefForm
     message = OptionalMultilineText.using(label=L_("Message")).with_properties(rows=8, cols=80)
-    data_file = File.using(optional=True, label=L_('Upload file:'))
+    data_file = File.using(optional=True, label=L_('Replace content with uploaded file:'))
 
     def _load(self, item):
         meta = item.prepare_meta_for_modify(item.meta)
@@ -188,7 +188,7 @@ class TicketUpdateForm(TicketForm):
                 else:
                     original = meta.get(key)
                     new = value
-                msg = L_('{key} changed from {original} to {new}'.format(key=key, original=original, new=new))
+                msg = L_('{key} changed from {original} to {new}').format(key=key, original=original, new=new)
                 meta_changes.append(' * ' + msg)
         if meta_changes:
             meta_changes = 'Meta updates:\n' + '\n'.join(meta_changes)

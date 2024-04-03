@@ -5,7 +5,7 @@
 # Copyright: 2010 MoinMoin:ValentinJaniaut
 # Copyright: 2010 MoinMoin:DiogenesAugusto
 # Copyright: 2012 MoinMoin:CheerXiao
-# Copyright: 2023 MoinMoin:UlrichB
+# Copyright: 2023-2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -78,8 +78,6 @@ logging = log.getLogger(__name__)
 
 COLS = 80
 ROWS_DATA = 20
-ENABLED_CONTENT_TYPES = []  # Allow all content types
-# ENABLED_CONTENT_TYPES = ['MoinMoin', 'PDF', 'PNG', 'JPEG',]  # example: restrict content types
 
 
 class RegistryContent(RegistryBase):
@@ -109,7 +107,7 @@ class RegistryContent(RegistryBase):
         # If group is specified and contenttype is not a wildcard one
         if group and e.content_type.type and e.content_type.subtype:
             if group not in self.groups:
-                raise ValueError('Unknown group name: {0}'.format(group))
+                raise ValueError(f'Unknown group name: {group}')
             self.groups[group].append(e)
             self.groups[group].sort(key=attrgetter('ingroup_order'))
         return self._register(e)
@@ -127,12 +125,35 @@ content_registry = RegistryContent([
 
 
 def register(cls):
-    if not cls.display_name or len(ENABLED_CONTENT_TYPES) == 0 or cls.display_name in ENABLED_CONTENT_TYPES:
-        logging.debug("register contenttype {0} in group {1}".format(cls.display_name, cls.group))
-        content_registry.register(RegistryContent.Entry(cls._factory, Type(cls.contenttype),
-                                                        cls.default_contenttype_params, cls.display_name,
-                                                        cls.ingroup_order, RegistryContent.PRIORITY_MIDDLE), cls.group)
+    content_registry.register(RegistryContent.Entry(cls._factory, Type(cls.contenttype),
+                                                    cls.default_contenttype_params, cls.display_name,
+                                                    cls.ingroup_order, RegistryContent.PRIORITY_MIDDLE), cls.group)
     return cls
+
+
+def content_registry_enable(contenttype_enabled):
+    """ Remove content types from the registry that are not explicitly enabled
+    """
+    groups_enabled = dict([(g, []) for g in content_registry.group_names])
+    for group in content_registry.group_names:
+        for e in content_registry.groups[group]:
+            if e.display_name and e.display_name in contenttype_enabled:
+                groups_enabled[group].append(e)
+                logging.debug(f"Enable contenttype {e.display_name} in group {group}")
+    content_registry.groups = groups_enabled
+
+
+def content_registry_disable(contenttype_disabled):
+    """ Remove disabled content types from registry
+    """
+    groups_enabled = dict([(g, []) for g in content_registry.group_names])
+    for group in content_registry.group_names:
+        for e in content_registry.groups[group]:
+            if not e.display_name or e.display_name not in contenttype_disabled:
+                groups_enabled[group].append(e)
+            else:
+                logging.debug(f"Disable contenttype {e.display_name} in group {group}")
+    content_registry.groups = groups_enabled
 
 
 def conv_serialize(doc, namespaces, method='polyglot'):
@@ -153,7 +174,6 @@ class Content:
     display_name = None
     group = GROUP_OTHER
     ingroup_order = 0
-    enabled_content_types = ENABLED_CONTENT_TYPES
 
     @classmethod
     def _factory(cls, *args, **kw):
@@ -162,7 +182,7 @@ class Content:
     @classmethod
     def create(cls, contenttype, item=None):
         content = content_registry.get(contenttype, item)
-        logging.debug("Content class {0!r} handles {1!r}".format(content.__class__, contenttype))
+        logging.debug(f"Content class {content.__class__!r} handles {contenttype!r}")
         return content
 
     def __init__(self, contenttype, item=None):
@@ -209,7 +229,7 @@ class Content:
             from moin.converters import default_registry as reg
             input_conv = reg.get(Type(self.contenttype), type_moin_document)
             if not input_conv:
-                raise TypeError("We cannot handle the conversion from {0} to the DOM tree".format(self.contenttype))
+                raise TypeError(f"We cannot handle the conversion from {self.contenttype} to the DOM tree")
             smiley_conv = reg.get(type_moin_document, type_moin_document, icon='smiley')
 
             # We can process the conversion
@@ -269,7 +289,7 @@ class Content:
             # converter does not crash the item view (otherwise a user might
             # not be able to fix it from the UI).
             error_id = uuid.uuid4()
-            logging.exception("An exception happened in _render_data (error_id = %s ):" % error_id)
+            logging.exception(f"An exception happened in _render_data (error_id = {error_id} ):")
             rendered_data = render_template('crash.html',
                                             server_time=time.strftime("%Y-%m-%d %H:%M:%S %Z"),
                                             url=request.url,
@@ -340,7 +360,7 @@ class Binary(Content):
         doc of Item._ModifyForm.
         """
         template = 'modify_binary.html'
-        data_file = File.using(optional=True, label=L_('Upload file:'))
+        data_file = File.using(optional=True, label=L_('Replace content with uploaded file:'))
 
         def _load(self, item):
             pass
@@ -371,8 +391,8 @@ class Binary(Content):
                                content=Markup(self._render_data()))
 
     def _convert(self, doc):
-        return _("Impossible to convert the data to the contenttype: %(contenttype)s",
-                 contenttype=request.values.get('contenttype'))
+        return _("Impossible to convert the data to the contenttype: {contenttype}"
+                ).format(contenttype=request.values.get('contenttype'))
 
     def do_get(self, force_attachment=False, mimetype=None):
         hash = self.rev.meta.get(HASH_ALGORITHM)
@@ -467,7 +487,7 @@ class TarMixin:
         :param expected_members: set of expected member file names
         """
         if name not in expected_members:
-            raise StorageError("tried to add unexpected member {0!r} to container item {1!r}".format(name, self.name))
+            raise StorageError(f"tried to add unexpected member {name!r} to container item {self.name!r}")
         assert isinstance(name, str)
         temp_fname = os.path.join(tempfile.gettempdir(), 'TarContainer_' +
                                   cache_key(usage='TarContainer', name=self.name))
@@ -478,8 +498,8 @@ class TarMixin:
                     content_length = len(content)
                 content = BytesIO(content)  # we need a file obj
             elif not hasattr(content, 'read'):
-                logging.error("unsupported content object: {0!r}".format(content))
-                raise StorageError("unsupported content object: {0!r}".format(content))
+                logging.error(f"unsupported content object: {content!r}")
+                raise StorageError(f"unsupported content object: {content!r}")
             else:
                 raise NotImplementedError
             assert content_length >= 0  # we don't want -1 interpreted as 4G-1
@@ -487,7 +507,7 @@ class TarMixin:
             tf.addfile(ti, content)
             tf_members = set(tf.getnames())
         if tf_members - expected_members:
-            msg = "found unexpected members in container item {0!r}".format(self.name)
+            msg = f"found unexpected members in container item {self.name!r}"
             logging.error(msg)
             os.remove(temp_fname)
             raise StorageError(msg)
@@ -658,7 +678,7 @@ class TransformableBitmapImage(RenderableBitmapImage):
         elif content_type == 'image/gif':
             output_type = 'GIF'
         else:
-            raise ValueError("content_type {0!r} not supported".format(content_type))
+            raise ValueError(f"content_type {content_type!r} not supported")
 
         # revision obj has read() seek() tell(), thus this works:
         image = PILImage.open(self.rev.data)
@@ -739,14 +759,14 @@ class TransformableBitmapImage(RenderableBitmapImage):
         url = url_for('frontend.diffraw', _external=True, item_name=self.name, rev1=oldrev.revid, rev2=newrev.revid)
         return render_template('atom.html',
                                oldrev=oldrev, newrev=newrev, get='binary',
-                               content=Markup('<img src="{0}" />'.format(escape(url))))
+                               content=Markup(f'<img src="{escape(url)}" />'))
 
     def _render_data_diff(self, oldrev, newrev, rev_links={}, fqname=None):
         if PIL is None:
             # no PIL, we can't do anything, we just call the base class method
             return super(TransformableBitmapImage, self)._render_data_diff(oldrev, newrev)
         url = url_for('frontend.diffraw', item_name=self.name, rev1=oldrev.revid, rev2=newrev.revid)
-        return Markup('<img src="{0}" />'.format(escape(url)))
+        return Markup(f'<img src="{escape(url)}" />')
 
     def _render_data_diff_raw(self, oldrev, newrev):
         hash_name = HASH_ALGORITHM
@@ -767,7 +787,7 @@ class TransformableBitmapImage(RenderableBitmapImage):
             elif content_type == 'image/gif':
                 output_type = 'GIF'
             else:
-                raise ValueError("content_type {0!r} not supported".format(content_type))
+                raise ValueError(f"content_type {content_type!r} not supported")
 
             try:
                 oldimage = PILImage.open(oldrev.data)
@@ -782,7 +802,7 @@ class TransformableBitmapImage(RenderableBitmapImage):
                 headers = wikiutil.file_headers(content_type=content_type, content_length=len(data))
                 app.cache.set(cid, (headers, data))
             except (IOError, ValueError) as err:
-                logging.exception("error during PILdiff: {0}".format(err))
+                logging.exception(f"error during PILdiff: {err}")
                 abort(404)  # TODO render user friendly error image
         else:
             # XXX TODO check ACL behaviour
@@ -1111,14 +1131,14 @@ class DrawPNGMap(Draw):
         # TODO: this could be a converter -> dom, then transcluding this kind
         # of items and also rendering them with the code in base class could work
         png_url = url_for('frontend.get_item', item_name=self.name, member='drawing.png', rev=self.rev.revid)
-        title = _('Edit drawing %(filename)s (opens in new window)', filename=self.name)
+        title = _('Edit drawing {filename} (opens in new window)').format(filename=self.name)
         image_map = self._read_map()
         if image_map:
             mapid, image_map = self._transform_map(image_map, title)
-            title = _('Clickable drawing: %(filename)s', filename=self.name)
-            return Markup(image_map + '<img src="{0}" alt="{1}" usemap="#{2}" />'.format(png_url, title, mapid))
+            title = _('Clickable drawing: {filename}').format(filename=self.name)
+            return Markup(image_map + f'<img src="{png_url}" alt="{title}" usemap="#{mapid}" />')
         else:
-            return Markup('<img src="{0}" alt="{1}" />'.format(png_url, title))
+            return Markup(f'<img src="{png_url}" alt="{title}" />')
 
 
 @register
@@ -1148,4 +1168,4 @@ class SvgDraw(Draw):
         # of items and also rendering them with the code in base class could work
         drawing_url = url_for('frontend.get_item', item_name=self.name, member='drawing.svg', rev=self.rev.revid)
         png_url = url_for('frontend.get_item', item_name=self.name, member='drawing.png', rev=self.rev.revid)
-        return Markup('<img src="{0}" alt="{1}" />'.format(png_url, drawing_url))
+        return Markup(f'<img src="{png_url}" alt="{drawing_url}" />')

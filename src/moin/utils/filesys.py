@@ -1,5 +1,6 @@
 # Copyright: 2002 Juergen Hermann <jh@web.de>
 # Copyright: 2006-2010 MoinMoin:ThomasWaldmann
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -12,8 +13,9 @@ import os
 import shutil
 import time
 import errno
-from stat import S_ISDIR, ST_MODE, S_IMODE
 
+from glob import glob
+from stat import S_ISDIR, ST_MODE, S_IMODE
 from os import replace as rename
 
 from moin import log
@@ -112,8 +114,7 @@ def access_denied_decorator(fn):
                     if retry > max_retries:
                         raise
                     if err.errno == errno.EACCES:
-                        logging.warning('{0}({1!r}, {2!r}) -> access denied. retrying...'.format(
-                            fn.__name__, args, kwargs))
+                        logging.warning(f'{fn.__name__}({args!r}, {kwargs!r}) -> access denied. retrying...')
                         time.sleep(0.01)
                         continue
                     raise
@@ -181,3 +182,9 @@ def copytree(src, dst, symlinks=False):
             errors.append((srcname, dstname, why))
     if errors:
         raise EnvironmentError(str(errors))
+
+
+def wiki_index_exists():
+    """Return true if a wiki index exists."""
+    logging.debug('CWD: %s', os.getcwd())
+    return bool(glob('wiki/index/_all_revs_*.toc'))

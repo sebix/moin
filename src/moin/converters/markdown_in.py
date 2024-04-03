@@ -1,5 +1,6 @@
 # Copyright: 2008-2010 MoinMoin:BastianBlank
 # Copyright: 2012 MoinMoin:AndreasKloeckner
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -393,10 +394,10 @@ class Converter:
 
         # We should ignore this tag
         if element.tag in self.ignored_tags:
-            logging.info("INFO : Ignored tag : {0}".format(element.tag))
+            logging.info(f"INFO : Ignored tag : {element.tag}")
             return
 
-        logging.info("INFO : Unhandled tag : {0}".format(element.tag))
+        logging.info(f"INFO : Unhandled tag : {element.tag}")
         return
 
     # }}} end of html conversion
@@ -489,7 +490,7 @@ class Converter:
         """
         try:
             # we enclose plain text and span tags with P-tags
-            p_text = html_in_converter('<p>%s</p>' % text)
+            p_text = html_in_converter(f'<p>{text}</p>')
             # discard page and body tags
             return p_text[0][0]
         except AssertionError:
@@ -599,7 +600,7 @@ class Converter:
 
         # }}} end Markdown 3.0.0 core.py convert method
 
-        add_lineno = bool(flaskg and flaskg.add_lineno_attr)
+        add_lineno = bool(flaskg and getattr(flaskg, 'add_lineno_attr', False))
 
         # run markdown post processors and convert from ElementTree to an EmeraldTree object
         converted = self.do_children(root, add_lineno=add_lineno)

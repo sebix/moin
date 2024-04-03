@@ -1,4 +1,5 @@
 # Copyright: 2019 MoinMoin:KentWatsen
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -41,8 +42,7 @@ Parameters:
                         blocks of lowercase characters or numbers and an
                         uppercase character.
 
-            ItemTitle : Use the title from the first header in the linked
-                        item [*** NOT IMPLEMENTED YET ***]
+            ItemTitle : Use the title from the first header in the linked item
 
 Notes:
 
@@ -67,7 +67,7 @@ from flask import g as flaskg
 from moin.i18n import _
 from moin.utils.tree import moin_page
 from moin.utils.interwiki import split_fqname
-from moin.macros._base import MacroPageLinkListBase
+from moin.macros._base import MacroPageLinkListBase, get_item_names
 
 
 class Macro(MacroPageLinkListBase):
@@ -89,8 +89,8 @@ class Macro(MacroPageLinkListBase):
             try:
                 key, val = [x.strip() for x in arg.split('=')]
             except ValueError:
-                raise ValueError(_('ItemList macro: Argument "%s" does not follow <key>=<val> format '
-                                   '(arguments, if more than one, must be comma-separated).' % arg))
+                raise ValueError(_('ItemList macro: Argument "{arg}" does not follow <key>=<val> format '
+                                   '(arguments, if more than one, must be comma-separated).').format(arg=arg))
 
             if len(val) < 2 or (val[0] != "'" and val[0] != '"') and val[-1] != val[0]:
                 raise ValueError(_("ItemList macro: The key's value must be bracketed by matching quotes."))
@@ -108,13 +108,13 @@ class Macro(MacroPageLinkListBase):
                 elif val == "True":
                     ordered = True
                 else:
-                    raise ValueError(_('ItemList macro: The value must be "True" or "False". (got "%s")' % val))
+                    raise ValueError(_('ItemList macro: The value must be "True" or "False". (got "{val}")').format(val=val))
             elif key == "display":
                 display = val  # let 'create_pagelink_list' throw an exception if needed
             elif key == "skiptag":
                 skiptag = val
             else:
-                raise KeyError(_('ItemList macro: Unrecognized key "%s".' % key))
+                raise KeyError(_('ItemList macro: Unrecognized key "{key}".').format(key=key))
 
         # use curr item if not specified
         if item is None:
@@ -125,18 +125,18 @@ class Macro(MacroPageLinkListBase):
         # verify item exists and current user has read permission
         if item != "":
             if not flaskg.storage.get_item(**(split_fqname(item).query)):
-                message = _('Item does not exist or read access blocked by ACLs: {0}'.format(item))
+                message = _('Item does not exist or read access blocked by ACLs: {0}').format(item)
                 admonition = moin_page.div(attrib={moin_page.class_: 'important'},
                                            children=[moin_page.p(children=[message])])
                 return admonition
 
         # process subitems
-        children = self.get_item_names(item, startswith=startswith, skiptag=skiptag)
+        children = get_item_names(item, startswith=startswith, skiptag=skiptag)
         if regex:
             try:
                 regex_re = re.compile(regex, re.IGNORECASE)
             except re.error as err:
-                raise ValueError(_("ItemList macro: Error in regex {0!r}: {1}".format(regex, err)))
+                raise ValueError(_("ItemList macro: Error in regex {0!r}: {1}").format(regex, err))
             newlist = []
             for child in children:
                 if regex_re.search(child.fullname):

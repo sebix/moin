@@ -20,6 +20,8 @@ from flask import g as flaskg
 from flask import url_for, request
 from flask_theme import get_theme, render_theme_template
 
+from babel import Locale
+
 from moin.i18n import _, L_
 from moin import wikiutil, user
 from moin.constants.keys import USERID, ADDRESS, HOSTNAME, REVID, ITEMID, NAME_EXACT, ASSIGNED_TO, NAME, NAMESPACE
@@ -49,8 +51,7 @@ def get_current_theme():
     try:
         return get_theme(theme_name)
     except KeyError:
-        logging.warning("Theme {0!r} was not found; using default of {1!r} instead.".format(
-            theme_name, app.cfg.theme_default))
+        logging.warning(f"Theme {theme_name!r} was not found; using default of {app.cfg.theme_default!r} instead.")
         theme_name = app.cfg.theme_default
         return get_theme(theme_name)
 
@@ -84,10 +85,10 @@ class ThemeSupport:
         self.cfg = cfg
         self.user = flaskg.user
         self.storage = flaskg.storage
-        self.ui_lang = 'en'  # XXX
-        self.ui_dir = 'ltr'  # XXX
-        self.content_lang = flaskg.content_lang  # XXX
-        self.content_dir = 'ltr'  # XXX
+        self.ui_lang = cfg.language_default
+        self.ui_dir = cfg.content_dir
+        self.user_lang = flaskg.user.language or self.ui_lang
+        self.user_dir = Locale(self.user_lang).text_direction
         if request.url_root[len(request.host_url):-1]:
             self.wiki_root = '/' + request.url_root[len(request.host_url):-1]
         else:
@@ -256,7 +257,7 @@ class ThemeSupport:
                             for sub_item_name in app.cfg.supplementation_item_names:
                                 current_sub = fqname.value.rsplit('/', 1)[-1]
                                 if current_sub not in app.cfg.supplementation_item_names:
-                                    supp_name = '%s/%s' % (fqname.value, sub_item_name)
+                                    supp_name = f'{fqname.value}/{sub_item_name}'
                                     if flaskg.storage.has_item(supp_name) or flaskg.user.may.write(supp_name):
                                         subitem_exists = self.storage.has_item(supp_name)
                                         href = url_for('frontend.show_item', item_name=supp_name)
@@ -357,7 +358,7 @@ class ThemeSupport:
         name = user.name0
         display_name = user.display_name or name
         wikiname, itemname = getInterwikiHome(name)
-        title = "{0} @ {1}".format(display_name, wikiname)
+        title = f"{display_name} @ {wikiname}"
         # link to (interwiki) user homepage
         if is_local_wiki(wikiname):
             exists = self.storage.has_item(itemname)
@@ -443,11 +444,11 @@ class ThemeSupport:
             elif endpoint in ["frontend.global_history", "frontend.global_tags"]:
                 args['namespace'] = fqname.namespace
                 if fqname and fqname.namespace:
-                    link_text = '{0}/{1}'.format(fqname.namespace, link_text)
+                    link_text = f'{fqname.namespace}/{link_text}'
             elif endpoint == "frontend.index":
                 args['item_name'] = fqname.namespace
                 if fqname and fqname.namespace:
-                    link_text = '{0}/{1}'.format(fqname.namespace, link_text)
+                    link_text = f'{fqname.namespace}/{link_text}'
             elif endpoint == "admin.index" and not getattr(flaskg.user.may, SUPERUSER)():
                 continue
             items.append((cls, url_for(endpoint, **args), link_text, title))
@@ -479,10 +480,10 @@ class ThemeSupport:
                                 pass  # ignore invalid lines
                         f.close()
                         app.cache.set(cid, sisteritems)
-                        logging.info("Site: {0!r} Status: Updated. Pages: {1}".format(sistername, len(sisteritems)))
+                        logging.info(f"Site: {sistername!r} Status: Updated. Pages: {len(sisteritems)}")
                     except IOError as err:
                         (title, code, msg, headers) = err.args  # code e.g. 304
-                        logging.warning("Site: {0!r} Status: Not updated.".format(sistername))
+                        logging.warning(f"Site: {sistername!r} Status: Not updated.")
                         logging.exception("exception was:")
                 if current in sisteritems:
                     url = sisteritems[current]
@@ -601,11 +602,11 @@ def get_editor_info(meta, external=False):
         # only tell ip / hostname if show_hosts is True
         if hostname:
             text = hostname[:15]  # 15 = len(ipaddr)
-            name = title = '{0}[{1}]'.format(hostname, addr)
+            name = title = f'{hostname}[{addr}]'
             css = 'editor host'
         else:
             name = text = addr
-            title = '[{0}]'.format(addr)
+            title = f'[{addr}]'
             css = 'editor ip'
 
     userid = meta.get(USERID)
@@ -616,7 +617,7 @@ def get_editor_info(meta, external=False):
         display_name = u.display_name or name
         if title:
             # we already have some address info
-            title = "{0} @ {1}".format(display_name, title)
+            title = f"{display_name} @ {title}"
         else:
             title = display_name
         if u.mailto_author and u.email:
@@ -688,10 +689,10 @@ def shorten_item_name(name, length=25):
         # If it's not enough, replace the middle with '...'
         if len(name_part) > length:
             half, left = divmod(length - 3, 2)
-            name = '{0}...{1}'.format(name_part[:half + left], name_part[-half:])
+            name = f'{name_part[:half + left]}...{name_part[-half:]}'
         elif len(name_part) < length - 6:
             # now it is too short, add back starting characters
-            name = '{0}...{1}'.format(name[:length - len(name_part) - 3], name_part)
+            name = f'{name[:length - len(name_part) - 3]}...{name_part}'
         else:
             name = name_part
     return name
@@ -731,7 +732,7 @@ def contenttype_to_class(contenttype):
     if not cls:
         # just use the major part of mimetype
         cls = contenttype.split('/', 1)[0]
-    return 'moin-mime-{0}'.format(cls)
+    return f'moin-mime-{cls}'
 
 
 def utctimestamp(dt):
@@ -798,7 +799,7 @@ def setup_jinja_env():
         'storage': flaskg.storage,
         'clock': flaskg.clock,
         'cfg': app.cfg,
-        'item_name': '@NONAMEGIVEN',  # XXX can we just use '' ?
+        'item_name': request.view_args.get('item_name', ''),
         'url_for_item': url_for_item,
         'get_fqname': get_fqname,
         'get_editor_info': lambda meta: get_editor_info(meta),

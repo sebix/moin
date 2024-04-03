@@ -5,6 +5,7 @@
 # Copyright: 2010      MoinMoin:DiogenesAugusto
 # Copyright: 2011      MoinMoin:AkashSinha
 # Copyright: 2023      MoinMoin project
+# Copyright: 2024      MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -15,12 +16,13 @@ MoinMoin - Configuration defaults class
 import re
 import os
 
-from babel import parse_locale
+from babel import Locale, parse_locale
 
 from moin.i18n import _, L_, N_
 from moin import error
 from moin.constants.rights import ACL_RIGHTS_CONTENTS, ACL_RIGHTS_FUNCTIONS
 from moin.constants.keys import *
+from moin.items.content import content_registry_enable, content_registry_disable
 from moin import datastructures
 from moin.auth import MoinAuth
 from moin.utils import plugins
@@ -87,7 +89,8 @@ class ConfigFunctionality:
         # to give browser language detection a chance.
         try:
             self.language_default = parse_locale(self.locale_default)[0]
-        except ValueError:
+            self.content_dir = Locale(self.language_default).text_direction
+        except Exception:  # noqa
             raise error.ConfigurationError("Invalid locale_default value (give something like 'en_US').")
 
         # post process
@@ -164,6 +167,12 @@ class ConfigFunctionality:
         except ValueError as err:
             raise error.ConfigurationError("passlib_crypt_context configuration is invalid [{0}].".format(err))
 
+        if len(self.contenttype_enabled):
+            content_registry_enable(self.contenttype_enabled)
+        elif len(self.contenttype_disabled):
+            content_registry_disable(self.contenttype_disabled)
+
+
     def _config_check(self):
         """ Check namespace and warn about unknown names
 
@@ -197,8 +206,8 @@ configuration for typos before requesting support or reporting a bug.
         """
         charset = 'utf-8'
         message = """
-"%(name)s" configuration variable is a string, but should be
-unicode. Use %(name)s = "value" syntax for unicode variables.
+"{name}" configuration variable is a string, but should be
+unicode. Use {name} = "value" syntax for unicode variables.
 
 Also check your "-*- coding -*-" line at the top of your configuration
 file. It should match the actual charset of the configuration file.
@@ -221,8 +230,7 @@ file. It should match the actual charset of the configuration file.
                     try:
                         setattr(self, name, str(attr, charset))
                     except UnicodeError:
-                        raise error.ConfigurationError(message %
-                                                       {'name': name})
+                        raise error.ConfigurationError(message.format(name=name))
                 # Look into lists and try to decode strings inside them
                 elif isinstance(attr, list):
                     for i in range(len(attr)):
@@ -231,8 +239,7 @@ file. It should match the actual charset of the configuration file.
                             try:
                                 attr[i] = str(item, charset)
                             except UnicodeError:
-                                raise error.ConfigurationError(message %
-                                                               {'name': name})
+                                raise error.ConfigurationError(message.format(name=name))
 
     def __getitem__(self, item):
         """ Make it possible to access a config object like a dict """
@@ -264,10 +271,10 @@ def _default_password_checker(cfg, username, password,
     """
     # in any case, do a very simple built-in check to avoid the worst passwords
     if len(password) < min_length:
-        return _("For a password a minimum length of %(min_length)d characters is required.",
+        return _("For a password a minimum length of {min_length:d} characters is required.",
                  min_length=min_length)
     if len(set(password)) < min_different:
-        return _("For a password a minimum of %(min_different)d different characters is required.",
+        return _("For a password a minimum of {min_different:d} different characters is required.",
                  min_different=min_different)
 
     username_lower = username.lower()
@@ -512,6 +519,8 @@ options_no_group_name = {
         # ('refresh', None, "refresh = (minimum_delay_s, targets_allowed) enables use of '#refresh 5 PageName' processing instruction, targets_allowed must be either 'internal' or 'external'"),
         ('siteid', 'MoinMoin', None),  # XXX just default to some existing module name to
                                        # make plugin loader etc. work for now
+        ('contenttype_disabled', [], "List of disabled content types. Ignored if contenttype_enabled is set."),
+        ('contenttype_enabled', [], "List of available content types for new items. Default: [] (all types enabled)."),
     )),
 }
 
