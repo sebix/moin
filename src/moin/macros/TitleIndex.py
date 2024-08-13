@@ -11,7 +11,7 @@ Usage:
     <<TitleIndex>>
 """
 
-from moin.macros._base import MacroMultiLinkListBase, get_item_names
+from moin.macros._base import MacroMultiLinkListBase, get_item_names, fail_message
 from moin.i18n import _
 from moin.utils.tree import moin_page
 from moin.utils.interwiki import split_fqname
@@ -23,11 +23,12 @@ class Macro(MacroMultiLinkListBase):
         namespace = split_fqname(str(page_url.path)).namespace
 
         if arguments:
-            raise ValueError(_("TitleList macro does not have any arguments."))
+            err_msg = _("TitleList macro does not support any arguments.")
+            return fail_message(err_msg, alternative)
 
         children = get_item_names(namespace)
         if not children:
-            empty_list = moin_page.list(attrib={moin_page.item_label_generate: 'unordered'})
+            empty_list = moin_page.list(attrib={moin_page.item_label_generate: "unordered"})
             item_body = moin_page.list_item_body(children=[_("<TitleList macro: No matching items were found.>")])
             empty_list.append(moin_page.list_item(children=[item_body]))
             return empty_list
