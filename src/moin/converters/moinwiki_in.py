@@ -2,6 +2,7 @@
 # Copyright: 2006-2008 MoinMoin:ThomasWaldmann
 # Copyright: 2007 MoinMoin:ReimarBauer
 # Copyright: 2008-2010 MoinMoin:BastianBlank
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -80,11 +81,16 @@ class _TableArguments:
 
     def arg_repl(self, args, arg, key=None, value_u=None, value_q1=None, value_q2=None):
         key = self.map_keys.get(key, key)
-        value = (value_u or value_q1 or value_q2).encode("ascii", errors="backslashreplace").decode("unicode-escape")
-        if key:
-            args.keyword[key] = value
-        else:
-            args.positional.append(value)
+        if value_u or value_q1 or value_q2:
+            value = (
+                (value_u or value_q1 or value_q2).encode("ascii", errors="backslashreplace").decode("unicode-escape")
+            )
+            if key:
+                args.keyword[key] = value
+            else:
+                args.positional.append(value)
+        elif key:
+            logging.warning(f"No value supplied for {key} attribute, ignored.")
 
     def number_columns_spanned_repl(self, args, number_columns_spanned):
         args.keyword["number-columns-spanned"] = int(number_columns_spanned)
@@ -641,10 +647,9 @@ class Converter(ConverterMacro):
     """
 
     def inline_strike_repl(self, stack, strike, strike_begin=None):
+        """Ignore the closing stroke tag if no opening tag found"""
         if strike_begin is not None:
             stack.push(moin_page.del_())
-        else:
-            stack.pop()
 
     inline_subscript = r"""
         (?P<subscript>

@@ -274,8 +274,9 @@ a.moin-item-overlay-lr:hover { opacity: .8; background-color: var(--bg-trans-hov
 #moin-long-searchform div { margin: 0; }
 #moin-long-searchform .moin-search-query { width: 90%; margin-left: 0; }
 .moin-search-option-bar { font-size: 1.25em; font-weight: bold; cursor: pointer;  color: var(--link); }
-.moin-searchopt-tab > th:nth-child(1), th:nth-child(2) { width: 20%; }
-.moin-searchopt-tab th:nth-child(3) { width: 60%; }
+.moin-searchopt-tab > th:nth-child(1),
+.moin-searchopt-tab > th:nth-child(2) { width: 20%; }
+.moin-searchopt-tab > th:nth-child(3) { width: 60%; }
 .moin-search-hit-info { display: inline; }
 .moin-search-hits { font-weight: bold; }
 .moin-search-results { font-size: .92em; }
@@ -379,12 +380,14 @@ div.no-borders,
 
 /* footers */
 #moin-footer { clear: both; margin: 0 0; width: 100%; }
-#moin-pageinfo,
 #moin-wiki-license,
-#moin-credits,
 #moin-version,
 #moin-timings { margin: 10px 20px; text-align: left; font-size: .7em; color: var(--muted); float: left; clear: left; }
-#moin-creditlogos { clear: both; float: right; }
+#moin-pageinfo, #moin-credits { margin: 0 20px; text-align: left; font-size: .7em; color: var(--muted); }
+#moin-creditlogos { display: flex; align-items: end; column-gap: 6pt; }
+#moin-creditlogos a { display: grid; }
+#moin-credits-container { display: flex; width: 100%; justify-content: space-between;
+    align-items: end; margin-bottom: 10pt; }
 
 /* ordered lists */
 ol,
