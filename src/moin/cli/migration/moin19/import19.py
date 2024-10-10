@@ -224,7 +224,7 @@ def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
         for link in itemlinks_19:
             if link in users_itemlist or link.split("/")[0] in users_itemlist:
                 user_itemlinks2chg.append(link)
-            elif link not in custom_namespaces and link.split("/")[0] not in custom_namespaces:
+            elif target_namespace and link not in custom_namespaces and link.split("/")[0] not in custom_namespaces:
                 namespace_itemlinks2chg.append(link)
         if len(user_itemlinks2chg) > 0:
             migrate_itemlinks(dom, NAMESPACE_USERS, user_itemlinks2chg)
@@ -395,7 +395,12 @@ class PageItem:
             attachname = fname
             try:
                 yield AttachmentRevision(
-                    self.name, attachname, os.path.join(attachmentspath, fname), self.editlog, self.acl
+                    self.name,
+                    attachname,
+                    os.path.join(attachmentspath, fname),
+                    self.editlog,
+                    self.acl,
+                    self.target_namespace,
                 )
             except Exception:
                 logging.exception(f"AttachmentRevision {self.name!r}/{attachname!r} raised exception:")
@@ -641,7 +646,7 @@ class AttachmentRevision:
     moin 1.9 attachment (there is no revisioning, just 1 revision per attachment)
     """
 
-    def __init__(self, item_name, attach_name, attpath, editlog, acl):
+    def __init__(self, item_name, attach_name, attpath, editlog, acl, namespace):
         try:
             meta = editlog.find_attach(attach_name)
         except KeyError:
@@ -659,6 +664,7 @@ class AttachmentRevision:
         meta[hash_name] = hash_digest
         meta[SIZE] = size
         meta[ITEMID] = make_uuid()
+        meta[NAMESPACE] = namespace
         meta[REVID] = make_uuid()
         meta[REV_NUMBER] = 1
         meta[ITEMTYPE] = ITEMTYPE_DEFAULT

@@ -75,6 +75,8 @@ def index():
 
 
 @admin.route("/user")
+# wip - see #1734, this fix breaks the user view from the navigation bar.
+# @require_permission(SUPERUSER)
 def index_user():
     return render_template(
         "user/index_user.html",
@@ -359,6 +361,7 @@ def wikiconfighelp():
 
 
 @admin.route("/highlighterhelp", methods=["GET"])
+@require_permission(SUPERUSER)
 def highlighterhelp():
     """display a table with list of available Pygments lexers"""
     import pygments.lexers
@@ -375,6 +378,7 @@ def highlighterhelp():
 
 
 @admin.route("/interwikihelp", methods=["GET"])
+@require_permission(SUPERUSER)
 def interwikihelp():
     """display a table with list of known interwiki names / urls"""
     headings = [_("InterWiki name"), _("URL")]
@@ -383,6 +387,7 @@ def interwikihelp():
 
 
 @admin.route("/itemsize", methods=["GET"])
+@require_permission(SUPERUSER)
 def itemsize():
     """display a table with item sizes"""
     headings = [_("Size"), _("Item name")]
