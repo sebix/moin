@@ -58,7 +58,7 @@ from moin.constants.keys import (
 from moin.constants.misc import ANON
 from moin.i18n import _
 from moin.mail import sendmail
-from moin.utils.interwiki import getInterwikiHome, getInterwikiName
+from moin.utils.interwiki import getInterwikiHome, getInterwikiName, CompositeName
 from moin.utils.crypto import generate_token, valid_token, make_uuid
 from moin.utils.subscriptions import get_matched_subscription_patterns
 from moin.storage.error import NoSuchItemError, NoSuchRevisionError
@@ -732,27 +732,50 @@ class User:
 
     # Trail ------------------------------------------------------------------
 
-    def add_trail(self, item_name):
+    def add_trail(self, item_name, aliases=None):
         """Add item name to trail.
+           Store aliases as tuple
 
         :param item_name: the item name (unicode) to add to the trail
+        :param aliases: a list of aliases for this item
         """
+        full_name = item_name
         item_name = getInterwikiName(item_name)
         trail_in_session = session.get("trail", [])
         trail = trail_in_session[:]
-        trail = [i for i in trail if i != item_name]  # avoid dupes
-        trail.append(item_name)  # append current item name at end
+        aliases_trail = []
+        for alias in aliases:
+            if alias.fullname != full_name:
+                aliases_trail.append((alias.namespace, alias.field, alias.value))
+        trail = [i for i in trail if i != (item_name, aliases_trail)]  # avoid dupes
+        trail.append((item_name, aliases_trail))  # append current item name and aliases at end
         trail = trail[-self._cfg.trail_size :]  # limit trail length
         if trail != trail_in_session:
             session["trail"] = trail
 
     def get_trail(self):
         """Return list of recently visited item names.
-
+           convert aliases to CompositeName
         :rtype: list
         :returns: item names (unicode) in trail
         """
-        return session.get("trail", [])
+        trail_session = session.get("trail", [])
+        trail = []
+        for entry in trail_session:
+            if isinstance(entry, tuple) and len(entry) == 2:
+                item_name = entry[0]
+                try:
+                    aliases = [CompositeName(*alias) for alias in entry[1]]
+                except TypeError:
+                    aliases = []
+            elif isinstance(entry, str):  # old style
+                item_name = entry
+                aliases = []
+            else:
+                logging.warning(f"Invalid page trail entry, type is {type(entry)}.")
+                continue
+            trail.append((item_name, aliases))
+        return trail
 
     # Other ------------------------------------------------------------------
 

@@ -9,9 +9,11 @@ MoinMoin CLI - import content and user data from a moin 1.9 compatible storage i
 
 import os
 import re
+import sys
 import codecs
 import importlib
 from io import BytesIO
+
 import click
 
 from flask.cli import FlaskGroup
@@ -44,6 +46,7 @@ from moin.converters import default_registry
 from moin.utils.mime import type_moin_document
 from moin.utils.iri import Iri
 from moin.utils.tree import moin_page, xlink
+from moin.wikiutil import ParentItemName, AllParentNames
 
 from moin import log
 
@@ -79,13 +82,14 @@ FORMAT_TO_CONTENTTYPE = {
     "text/csv": "text/csv;charset=utf-8",
     "docbook": "application/docbook+xml;charset=utf-8",
 }
-MIGR_STAT_KEYS = ["revs", "items", "attachments", "users", "missing_user", "missing_file", "del_item"]
+MIGR_STAT_KEYS = ["revs", "items", "attachments", "parents", "users", "missing_user", "missing_file", "del_item"]
 
 special_users_lower = [user.lower() for user in SPECIAL_USERS]
 
 last_moin19_rev = {}
 user_names = []
 custom_namespaces = []
+item_last = {"parent_name": "", "item_name": "", "namespace": ""}
 migr_warn_max = 10
 
 migr_stat = {key: 0 for key in MIGR_STAT_KEYS}
@@ -109,10 +113,12 @@ def migr_logging(msg_id, log_msg):
 
 def migr_statistics(unknown_macros):
     logging.info("Migration statistics:")
-    logging.info(f"Users:       {migr_stat['users']:6d}")
-    logging.info(f"Items:       {migr_stat['items']:6d}")
-    logging.info(f"Revisions:   {migr_stat['revs']:6d}")
-    logging.info(f"Attachments: {migr_stat['attachments']:6d}")
+    logging.info(f"Users:          {migr_stat['users']:6d}")
+    logging.info(f"Items:          {migr_stat['items']:6d}")
+    logging.info(f"Revisions:      {migr_stat['revs']:6d}")
+    logging.info(f"Attachments:    {migr_stat['attachments']:6d}")
+    if migr_stat["parents"]:
+        logging.info(f"Parents added:  {migr_stat['parents']:6d}")
 
     for message in ["missing_user", "missing_file", "del_item"]:
         if migr_stat[message] > 0:
@@ -120,6 +126,38 @@ def migr_statistics(unknown_macros):
 
     if len(unknown_macros) > 0:
         logging.info(f"Warnings:    {len(unknown_macros):6d} - unknown macros {str(unknown_macros)[1:-1]}")
+
+
+def check_parents(item_name, namespace):
+    """Check if all parents and grandparents exist, return list of missing parent names"""
+    global item_last
+    missing_parents = set()
+    parent = ParentItemName(item_name)
+    if (
+        parent != ""
+        and parent != item_last["parent_name"]
+        and (item_name != item_last["item_name"] or namespace != item_last["namespace"])
+    ):
+        for name in AllParentNames(item_name):
+            if name not in last_moin19_rev.keys() or last_moin19_rev[name][1] != namespace:
+                missing_parents.add((namespace, name))
+    item_last = {"parent_name": parent, "item_name": item_name, "namespace": namespace}
+    return missing_parents
+
+
+def add_missing_parents(missing_parents):
+    """Add all missing parent items with a Moin item that only contains a comment."""
+    for namespace, name in sorted(missing_parents):
+        query = {NAME_EXACT: name, NAMESPACE: namespace}
+        item = app.storage.get_item(**query)
+        item.meta[COMMENT] = "created by import19"
+        item.meta[CONTENTTYPE] = "text/x.moin.wiki;charset=utf-8"
+        item.meta[ITEMTYPE] = ITEMTYPE_DEFAULT
+        item.meta[REV_NUMBER] = 1
+        item.meta[LANGUAGE] = app.cfg.language_default
+        data = b"## created by import19"
+        item.store_revision(item.meta, BytesIO(data), overwrite=False)
+        logging.debug(f"missing parent added for namespace: {namespace} name: {name}")
 
 
 @cli.command("import19", help="Import content and user data from a moin 1.9 wiki")
@@ -142,7 +180,24 @@ def migr_statistics(unknown_macros):
     default=NAMESPACE_DEFAULT,
     help="target namespace, e.g. used for members of a wikifarm.",
 )
-def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
+@click.option(
+    "--latest-rev-only",
+    "-r",
+    is_flag=True,
+    required=False,
+    default=False,
+    help="Import only the latest revision of each item.",
+)
+@click.option("--procs", "-p", required=False, type=int, default=1, help="Number of processors the writer will use.")
+@click.option(
+    "--limitmb",
+    "-l",
+    required=False,
+    type=int,
+    default=256,
+    help="Maximum memory (in megabytes) each index-writer will use for the indexing pool.",
+)
+def ImportMoin19(data_dir=None, markup_out=None, namespace=None, procs=None, limitmb=None, latest_rev_only=False):
     """Import content and user data from a moin wiki with version 1.9"""
 
     target_namespace = namespace
@@ -154,6 +209,7 @@ def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
     users_itemlist = set()
     global custom_namespaces
     custom_namespaces = namespaces()
+    missing_parents = set()
 
     logging.info("PHASE1: Converting Users ...")
     user_dir = os.path.join(data_dir, "user")
@@ -166,7 +222,11 @@ def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
 
     logging.info("PHASE2: Converting Pages and Attachments ...")
     for rev in PageBackend(
-        data_dir, deleted_mode=DELETED_MODE_KILL, default_markup="wiki", target_namespace=target_namespace
+        data_dir,
+        deleted_mode=DELETED_MODE_KILL,
+        default_markup="wiki",
+        target_namespace=target_namespace,
+        latest_rev_only=latest_rev_only,
     ):
         for user_name in user_names:
             if rev.meta[NAME][0] == user_name or rev.meta[NAME][0].startswith(user_name + "/"):
@@ -206,6 +266,7 @@ def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
                     item_name.encode("ascii", errors="replace"), namespace, revno
                 )
             )
+        missing_parents.update(check_parents(item_name, namespace))
         if namespace == "":
             namespace = "default"
         meta, data = backend.retrieve(namespace, revno)
@@ -262,14 +323,27 @@ def ImportMoin19(data_dir=None, markup_out=None, namespace=None):
         out.seek(0)
         backend.store(meta, out)
 
-    logging.info("PHASE4: Rebuilding the index ...")
-    drop_and_recreate_index(app.storage)
+    logging.info("PHASE4: Adding missing parents ...")
 
-    logging.info("Finished conversion!")
+    if len(missing_parents):
+        add_missing_parents(missing_parents)
+        migr_stat["parents"] = len(missing_parents)
+
+    logging.info("PHASE5: Rebuilding the index ...")
+    msg = ""
+    try:
+        drop_and_recreate_index(app.storage, procs=procs, limitmb=limitmb, multisegment=True)
+    except Exception:
+        logging.exception("Index build failed. You can try to destroy, create and rebuild the index manually")
+        msg = " with errors"
+
+    logging.info(f"Finished conversion{msg}.")
     if hasattr(conv_out, "unknown_macro_list"):
         migr_statistics(unknown_macros=conv_out.unknown_macro_list)
     else:
         migr_statistics([])
+    if msg:
+        sys.exit(1)
 
 
 class KillRequested(Exception):
@@ -288,6 +362,7 @@ class PageBackend:
         default_markup="wiki",
         target_namespace="",
         item_category_regex=r"(?P<all>Category(?P<key>(?!Template)\S+))",
+        latest_rev_only=False,
     ):
         """
         :param path: storage path (data_dir)
@@ -302,6 +377,7 @@ class PageBackend:
         :param default_markup: used if a page has no #format line, moin 1.9's default
                                'wiki' and we also use this default here.
         :param target_namespace : target namespace
+        :param latest_rev_only: import only the latest revision of each item
         """
         self._path = path
         assert deleted_mode in (DELETED_MODE_KILL, DELETED_MODE_KEEP)
@@ -309,6 +385,7 @@ class PageBackend:
         self.format_default = default_markup
         self.target_namespace = target_namespace
         self.item_category_regex = re.compile(item_category_regex, re.UNICODE)
+        self.latest_rev_only = latest_rev_only
 
     def __iter__(self):
         pages_dir = os.path.join(self._path, "pages")
@@ -317,7 +394,13 @@ class PageBackend:
         for f in pages:
             itemname = unquoteWikiname(f)
             try:
-                item = PageItem(self, os.path.join(pages_dir, f), itemname, self.target_namespace)
+                item = PageItem(
+                    self,
+                    os.path.join(pages_dir, f),
+                    itemname,
+                    self.target_namespace,
+                    latest_rev_only=self.latest_rev_only,
+                )
             except KillRequested:
                 pass  # a message was already output
             except (OSError, AttributeError):
@@ -338,11 +421,12 @@ class PageItem:
     moin 1.9 page
     """
 
-    def __init__(self, backend, path, itemname, target_namespace):
+    def __init__(self, backend, path, itemname, target_namespace, latest_rev_only=False):
         self.backend = backend
         self.name = itemname
         self.path = path
         self.target_namespace = target_namespace
+        self.latest_rev_only = latest_rev_only
         try:
 
             logging.debug(f"Processing item {itemname}")
@@ -371,10 +455,18 @@ class PageItem:
         except OSError:
             fnames = []
         parent_id = None
+        if self.latest_rev_only and f"{self.current:08d}" in fnames:
+            fnames = [f"{self.current:08d}"]  # process only the current revision
         for fname in fnames:
             try:
                 revno = int(fname)
-                page_rev = PageRevision(self, revno, os.path.join(revisionspath, fname), self.target_namespace)
+                page_rev = PageRevision(
+                    self,
+                    revno,
+                    os.path.join(revisionspath, fname),
+                    self.target_namespace,
+                    latest_rev_only=self.latest_rev_only,
+                )
                 if parent_id:
                     page_rev.meta[PARENTID] = parent_id
                 parent_id = page_rev.meta[REVID]
@@ -411,7 +503,7 @@ class PageRevision:
     moin 1.9 page revision
     """
 
-    def __init__(self, item, revno, path, target_namespace):
+    def __init__(self, item, revno, path, target_namespace, latest_rev_only=False):
         item_name = item.name
         itemid = item.itemid
         editlog = item.editlog
@@ -476,7 +568,10 @@ class PageRevision:
         meta[SIZE] = size
         meta[ITEMID] = itemid
         meta[REVID] = make_uuid()
-        meta[REV_NUMBER] = revno
+        if latest_rev_only:
+            meta[REV_NUMBER] = 1
+        else:
+            meta[REV_NUMBER] = revno
         meta[NAMESPACE] = target_namespace
         meta[ITEMTYPE] = ITEMTYPE_DEFAULT
         if LANGUAGE not in meta:

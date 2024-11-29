@@ -72,6 +72,21 @@ def get_item_names(name="", startswith="", kind="files", skiptag="", tag=""):
     return item_names
 
 
+def valid_item_name(name):
+    """return False if item_name not valid"""
+    if not isinstance(name, str):
+        return False
+    if name != name.strip():
+        return False
+    if name[0] in ["+", ".", "/"]:  # allow only absolute path
+        return False
+    if name.startswith("/") or name.endswith("/"):
+        return False
+    if "//" in name:  # empty ancestor name is invalid
+        return False
+    return True
+
+
 def extract_h1(item_name):
     """
     Return the first heading found in the item's content
@@ -207,7 +222,7 @@ class MacroPageLinkListBase(MacroBlockBase):
             url = str(iri.Iri(scheme="wiki", authority="", path="/" + fqname))
 
             if display == "FullPath":
-                linkname = pagename
+                linkname = fqname
             elif display == "ChildPath":
                 index = fqname.rfind("/")
                 if index == -1:
@@ -224,7 +239,7 @@ class MacroPageLinkListBase(MacroBlockBase):
             elif display == "ItemTitle":
                 linkname = extract_h1(pagename.fullname)
             else:
-                err_msg = _('Unrecognized display value "{display}".').format(display=display)
+                err_msg = _('Unrecognized "display" value "{display}".').format(display=display)
                 return fail_message(err_msg, alternative)
 
             pagelink = moin_page.a(attrib={xlink.href: url}, children=[linkname])

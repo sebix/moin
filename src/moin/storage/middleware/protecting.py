@@ -1,4 +1,5 @@
 # Copyright: 2011 MoinMoin:ThomasWaldmann
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -22,7 +23,6 @@ from moin.constants.namespaces import NAMESPACE_ALL
 from moin.security import AccessControlList
 from moin.utils import close_file
 from moin.utils.interwiki import split_fqname, CompositeName
-
 from moin import log
 
 logging = log.getLogger(__name__)
@@ -132,13 +132,34 @@ class ProtectingMiddleware:
             q = fqname.query
         else:
             raise ValueError("need itemid or fqname")
-        item = self.get_item(**q)
-        acl = item.acl
-        fqname = item.fqname
-        if acl is not None:
-            return [acl]
-        acl_cfg = self._get_configured_acls(fqname)
-        if acl_cfg["hierarchic"]:
+
+        meta_available = False
+        if self.meta:
+            """use meta data if available to avoid index query"""
+            meta_keys = [*self.meta.keys()]
+            if (
+                itemid
+                and fqname
+                and FQNAMES in meta_keys
+                and ITEMID in meta_keys
+                and itemid == self.meta[ITEMID]
+                and fqname == self.meta[FQNAMES][0]
+            ):
+                meta_available = True
+                if ACL in meta_keys:
+                    acl = self.meta[ACL]
+                    return [acl]
+
+        item = None
+        if not meta_available or self._get_configured_acls(fqname)["hierarchic"]:
+            """self.meta is not valid or namespace uses hierarchic acls and we need item parentids"""
+            item = self.get_item(**q)
+            acl = item.acl
+            fqname = item.fqname
+            if acl is not None:
+                return [acl]
+
+        if self._get_configured_acls(fqname)["hierarchic"]:
             # check parent(s), recursively
             parentids = item.parentids
             if parentids:
@@ -292,7 +313,7 @@ class ProtectingMiddleware:
         item = self.indexer.existing_item(**query)
         return ProtectedItem(self, item)
 
-    def may(self, fqname, capability, usernames=None):
+    def may(self, fqname, capability, usernames=None, item=None):
         if usernames is not None and isinstance(usernames, (bytes, str)):
             # we got a single username (maybe bytes), make a list of str:
             if isinstance(usernames, bytes):
@@ -302,7 +323,10 @@ class ProtectingMiddleware:
         fqname = fqname[0] if isinstance(fqname, list) else fqname
         if isinstance(fqname, str):
             fqname = split_fqname(fqname)
-        item = self.get_item(**fqname.query)
+        if item:
+            item = ProtectedItem(self, item)
+        else:
+            item = self.get_item(**fqname.query)
         allowed = item.allows(capability, user_names=usernames)
         return allowed
 
@@ -353,7 +377,10 @@ class ProtectedItem:
         including before/default/after acl.
         """
         fqname = self.item.fqname
-        itemid = self.item.itemid
+        if hasattr(self.item, "itemid"):
+            itemid = self.item.itemid
+        else:
+            itemid = None
         acl_cfg = self.protector._get_configured_acls(fqname)
         before_acl = acl_cfg["before"]
         after_acl = acl_cfg["after"]

@@ -73,8 +73,10 @@ def render_template(template, **context):
 def themed_error(e):
     item_name = request.view_args.get("item_name", "")
     if e.code == 403:
-        title = L_("Access Denied")
-        description = L_("You are not allowed to access this resource.")
+        title = L_("Item not found or access denied")
+        description = L_("Item '{name}' does not exist or you do not have permission to access it.").format(
+            name=item_name
+        )
         if e.description.startswith(" "):
             # leading blank indicates supplemental info, not standard werkzeug message
             description += e.description
@@ -332,15 +334,14 @@ class ThemeSupport:
         namespace as a prefix.
 
         :rtype: list
-        :returns: location breadcrumbs items in tuple (segment_name, fq_name, exists)
+        :returns: location breadcrumbs items in tuple (segment_name, fq_name)
         """
         breadcrumbs = []
         current_item = ""
         if not isinstance(fqname, CompositeName):
             fqname = split_fqname(fqname)
         if fqname.field != NAME_EXACT:
-            # flaskg.unprotected_storage.get_item(**fqname.query)
-            return [(fqname, fqname, bool(self.storage.get_item(**fqname.query)))]
+            return [(fqname, fqname)]
         namespace = segment1_namespace = fqname.namespace
         item_name = fqname.value
         if not item_name:
@@ -349,7 +350,7 @@ class ThemeSupport:
             current_item += segment
             fq_current = CompositeName(namespace, NAME_EXACT, current_item)
             fq_segment = CompositeName(segment1_namespace, NAME_EXACT, segment)
-            breadcrumbs.append((fq_segment, fq_current, bool(self.storage.get_item(**fq_current.query))))
+            breadcrumbs.append((fq_segment, fq_current))
             current_item += "/"
             segment1_namespace = ""
         return breadcrumbs
@@ -359,23 +360,20 @@ class ThemeSupport:
         Assemble the path breadcrumbs (a.k.a.: trail)
 
         :rtype: list
-        :returns: path breadcrumbs items in tuple (wiki_name, item_name, url, exists, err)
+        :returns: path breadcrumbs items in tuple (wiki_name, item_name, url, aliases, err)
         """
         user = self.user
         breadcrumbs = []
         trail = user.get_trail()
-        for interwiki_item_name in trail:
+        for interwiki_item_name, aliases in trail:
             wiki_name, namespace, field, item_name = split_interwiki(interwiki_item_name)
             fqname = CompositeName(namespace, field, item_name)
             err = not is_known_wiki(wiki_name)
             href = url_for_item(wiki_name=wiki_name, **fqname.split)
             if is_local_wiki(wiki_name):
-                exists = bool(self.storage.get_item(**fqname.query))
                 wiki_name = ""  # means "this wiki" for the theme code
-            else:
-                exists = True  # we can't detect existance of remote items
             if item_name:
-                breadcrumbs.append((wiki_name, fqname, href, exists, err))
+                breadcrumbs.append((wiki_name, fqname, href, aliases, err))
         return breadcrumbs
 
     def userhome(self):
@@ -560,17 +558,6 @@ class ThemeSupport:
         if self.cfg.auth_have_login:
             url = url or url_for("frontend.login")
         return url
-
-    def get_fqnames(self, fqname):
-        """
-        Return the list of other fqnames associated with the item.
-        """
-        if fqname.field != NAME_EXACT:
-            return []
-        item = self.storage.get_item(**fqname.query)
-        fqnames = item.fqnames
-        fqnames.remove(fqname)
-        return fqnames or []
 
     def get_namespaces(self, ns=None):
         """
