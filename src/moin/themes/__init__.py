@@ -27,7 +27,7 @@ from moin import wikiutil, user
 from moin.constants.keys import USERID, ADDRESS, HOSTNAME, REVID, ITEMID, NAME_EXACT, ASSIGNED_TO, NAME, NAMESPACE
 from moin.constants.contenttypes import CONTENTTYPES_MAP, CONTENTTYPE_MARKUP, CONTENTTYPE_TEXT, CONTENTTYPE_MOIN_19
 from moin.constants.misc import VALID_ITEMLINK_VIEWS, FLASH_REPEAT
-from moin.constants.namespaces import NAMESPACE_DEFAULT, NAMESPACE_USERS, NAMESPACE_ALL
+from moin.constants.namespaces import NAMESPACE_DEFAULT, NAMESPACE_USERS, NAMESPACE_USERPROFILES, NAMESPACE_ALL
 from moin.constants.rights import SUPERUSER
 from moin.search import SearchForm
 from moin.utils.interwiki import (
@@ -40,7 +40,6 @@ from moin.utils.interwiki import (
     split_fqname,
     get_fqname,
 )
-from moin.utils.crypto import cache_key
 from moin.utils.forms import make_generator
 from moin.utils.clock import timed
 from moin.utils.mime import Type
@@ -458,8 +457,6 @@ class ThemeSupport:
         """
         if not isinstance(fqname, CompositeName):
             fqname = split_fqname(fqname)
-        item_name = fqname.value
-        current = item_name
         # Process config navi_bar
         items = []
         for cls, endpoint, args, link_text, title in self.cfg.navi_bar:
@@ -481,42 +478,10 @@ class ThemeSupport:
             elif endpoint == "admin.index" and not getattr(flaskg.user.may, SUPERUSER)():
                 continue
             items.append((cls, url_for(endpoint, **args), link_text, title))
-
         # Add user links to wiki links.
         for text in self.user.quicklinks:
             url, link_text, title = self.split_navilink(text)
             items.append(("userlink", url, link_text, title))
-
-        # Add sister pages (see http://meatballwiki.org/wiki/?SisterSitesImplementationGuide )
-        for sistername, sisterurl in self.cfg.sistersites:
-            if is_local_wiki(sistername):
-                items.append(("sisterwiki current", sisterurl, sistername, ""))
-            else:
-                cid = cache_key(usage="SisterSites", sistername=sistername)
-                sisteritems = app.cache.get(cid)
-                if sisteritems is None:
-                    uo = urllib.request.URLopener()
-                    uo.version = "MoinMoin SisterItem list fetcher 1.0"
-                    try:
-                        sisteritems = {}
-                        f = uo.open(sisterurl)
-                        for line in f:
-                            line = line.strip()
-                            try:
-                                item_url, item_name = line.split(" ", 1)
-                                sisteritems[item_name.decode("utf-8")] = item_url
-                            except Exception:
-                                pass  # ignore invalid lines
-                        f.close()
-                        app.cache.set(cid, sisteritems)
-                        logging.info(f"Site: {sistername!r} Status: Updated. Pages: {len(sisteritems)}")
-                    except OSError as err:
-                        (title, code, msg, headers) = err.args  # code e.g. 304
-                        logging.warning(f"Site: {sistername!r} Status: Not updated.")
-                        logging.exception("exception was:")
-                if current in sisteritems:
-                    url = sisteritems[current]
-                    items.append(("sisterwiki", url, sistername, ""))
         return items
 
     def parent_item(self, item_name):
@@ -559,20 +524,21 @@ class ThemeSupport:
             url = url or url_for("frontend.login")
         return url
 
-    def get_namespaces(self, ns=None):
+    def get_namespaces(self):
         """
-        Return the list of tuples (composite name, namespace) referring to namespaces other
-        than the current namespace.
+        Return a sorted list of tuples (namespace name, fq name of ns home item).
+
+        The special userprofiles NS is omitted because it can never be selected
+        by a wiki user.
         """
-        if ns is not None and ns.value == "~":
-            ns = ""
         namespace_root_mapping = []
         for namespace, _unused in app.cfg.namespace_mapping:
+            if namespace == NAMESPACE_USERPROFILES:
+                continue
             namespace = namespace.rstrip("/")
-            if ns is None or namespace != ns:
-                fq_namespace = CompositeName(namespace, NAME_EXACT, "")
-                namespace_root_mapping.append((namespace or "~", fq_namespace.get_root_fqname()))
-        return namespace_root_mapping
+            fq_namespace = CompositeName(namespace, NAME_EXACT, "")
+            namespace_root_mapping.append((namespace or "~", fq_namespace.get_root_fqname()))
+        return sorted(namespace_root_mapping)
 
     def item_exists(self, itemname):
         """

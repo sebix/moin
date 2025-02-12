@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: MoinMoin 2.0\n"
 "Report-Msgid-Bugs-To: German <moin-user@python.org>\n"
-"POT-Creation-Date: 2024-11-29 21:40+0100\n"
+"POT-Creation-Date: 2024-11-29 17:01+0100\n"
 "PO-Revision-Date: 2018-09-15 23:37+0100\n"
 "Last-Translator: UlrichB\n"
 "Language: de\n"
@@ -1351,6 +1351,10 @@ msgstr "Keine Berechtigung, transkludierter Inhalt unterdrückt."
 msgid "Error: no items found matching \"<<Include({0})>>\""
 msgstr "Fehler: keine entsprechenden Items gefunden \"<<Include({0})>>\""
 
+#: src/moin/converters/macro.py:60
+msgid "Error: invalid macro name."
+msgstr "Fehler: ungültiger Makro-Name."
+
 #: src/moin/converters/macro.py:69
 msgid "<<{macro_name}: execution failed [{error_msg}] (see also the log)>>"
 msgstr "<<{macro_name}: Ausführung fehlgeschlagen [{error_msg}] (Sie finden weitere Informationen im Log)>>"
@@ -1514,7 +1518,6 @@ msgid "CONFLICT "
 msgstr "KONFLIKT "
 
 #: src/moin/items/__init__.py:1656
-#, fuzzy
 msgid "An edit conflict has occurred. Modify this item again to resolve conflicts."
 msgstr "Ein Bearbeitungskonflikt ist aufgetreten, diese Seite nochmals bearbeiten um den Konflikt zu beheben."
 
@@ -1757,9 +1760,8 @@ msgstr ""
 "durch ein Komma getrennt werden)."
 
 #: src/moin/macros/ItemList.py:110
-#, fuzzy
 msgid "The value for \"{key}\" must be \"True\" or \"False\", got \"{val}\"."
-msgstr "Der Wert muss \"True\" oder \"False\" sein. (erhielt \"{val}\")"
+msgstr "Der Wert für \"{key}\" muss \"True\" oder \"False\" sein. (erhielt \"{val}\")"
 
 #: src/moin/macros/ItemList.py:121
 msgid "Unrecognized key \"{key}\"."
@@ -1859,12 +1861,11 @@ msgstr "So"
 
 #: src/moin/macros/RandomQuote.py:42
 msgid "Invalid value given for item name: {0}"
-msgstr ""
+msgstr "Ungültiger Wert für Item-Name: {0}"
 
 #: src/moin/macros/RandomQuote.py:62
-#, fuzzy
 msgid "No quotes found in {0}"
-msgstr "Keine Tickets gefunden."
+msgstr "Keine Zitate gefunden in {0}"
 
 #: src/moin/macros/ShowIcons.py:27 src/moin/macros/ShowSmileys.py:20
 msgid "Markup"
@@ -1907,9 +1908,14 @@ msgid "Block macros cannot be used inline"
 msgstr "Block Makros können nicht 'inline' benutzt werden."
 
 #: src/moin/macros/_base.py:242
+<<<<<<< HEAD
 #, fuzzy
 msgid "Unrecognized \"display\" value \"{display}\"."
 msgstr "Unbekannter Wert für display: \"{display}\"."
+=======
+msgid "Unrecognized \"display\" value \"{display}\"."
+msgstr "Unbekannter Wert für \"display\": \"{display}\"."
+>>>>>>> @{-1}
 
 #: src/moin/mail/sendmail.py:54
 msgid "Contact administrator: cannot send password recovery e-mail because mail configuration is incomplete."
@@ -2061,6 +2067,10 @@ msgid ""
 "            content type and the item data (e.g. the content type is text/x.moin.wiki\n"
 "            and the data is a PNG file). "
 msgstr ""
+"Wenn der Fehler auf dieser Website nur bei diesem einen Item auftritt,\n"
+"            kann das Problem darin bestehen, dass die aktuelle Revision ungültige oder\n"
+"            beschädigte Daten enthält oder dass eine Unstimmigkeit zwischen dem Content-Typ und den Daten besteht\n"
+"            (z. B. ist der Content-Typ 'text/x.moin.wiki' und die Daten sind eine PNG-Datei). "
 
 #: src/moin/templates/crash.html:30
 msgid "Possible ways to identify the cause of the problem:"
@@ -3113,12 +3123,10 @@ msgid "Item '{item_name}' is locked by {user_name}. Try again in {number} {inter
 msgstr "Item '{item_name}' ist durch {user_name} gesperrt. Versuchen Sie es in {number} {interval} erneut."
 
 #: src/moin/utils/edit_locking.py:299
-#, fuzzy
 msgid "Someone else updated '{item_name}' after your edit lock timed out. Conflicting changes must be manually merged. "
 msgstr ""
-"Jemand anderes hat '{item_name}' geändert nachdem Ihre Schreibsperre abgelaufen ist. Wenn Sie 'Speichern' "
-"klicken, müssen Bearbeitungskonflikte manuell behoben werden. Klicken Sie auf 'Abbrechen' um die Änderungen zu "
-"verwerfen."
+"Jemand anderes hat '{item_name}' geändert nachdem Ihre Schreibsperre abgelaufen ist. "
+"Bearbeitungskonflikte müssen manuell behoben werden."
 
 #: src/moin/utils/edit_locking.py:337
 msgid "Item '{item_name}' is locked by {user_name}. Edit lock error, check Item History to verify no changes were lost."
@@ -3253,6 +3261,7 @@ msgstr "Monate"
 #: src/moin/utils/show_time.py:34
 msgid "years"
 msgstr "Jahre"
+<<<<<<< HEAD
 
 #~ msgid "For a password a minimum length of {min_length:d} characters is required."
 #~ msgstr "Ein Passwort muss mindestens {min_length} Zeichen haben."
@@ -3272,3 +3281,5 @@ msgstr "Jahre"
 #~ msgid "You are not allowed to access this resource."
 #~ msgstr "Sie haben nicht die notwendigen Rechte, um auf diese Ressource zuzugreifen"
 
+=======
+>>>>>>> @{-1}
