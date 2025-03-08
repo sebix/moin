@@ -14,7 +14,7 @@
 
     <div id="moin-main-wrapper">
         {{ snippets.before_header() }}
-        <header id="moin-header">
+        <header id="moin-header" lang="{{ theme_supp.user_lang }}" dir="{{ theme_supp.user_dir }}">
             {%- block header %}
                 {%- if snippets.logo() %}
                     <div id="moin-logo">
@@ -57,7 +57,7 @@
         </header>
         {{ snippets.after_header() }}
 
-        <div id="moin-page" role="main" lang="{{ theme_supp.content_lang }}" dir="{{ theme_supp.content_dir }}">
+        <div id="moin-page" role="main">
             {% block item -%}
                 {# If you want itemviews in your template, extend from show.html, not from here. #}
                 <div id="moin-content">
@@ -78,10 +78,10 @@
             {%- block footer %}
                 {% block footer_hr %}<hr/>{% endblock %}
                 {%- block footer_itemviews %}{% endblock %}
-                {{- snippets.creditlogos() }}
                 {%- block footer_meta %}{% endblock %}
                 {{- snippets.credits() }}
                 {{- snippets.license_info() }}
+                {{- snippets.creditlogos() }}
             {%- endblock -%}
         </footer>
         {{- snippets.after_footer() }}

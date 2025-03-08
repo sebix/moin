@@ -713,7 +713,7 @@ CSS classes for use with the wiki parser, tables, comments, and links
  - Background colors: red, green, blue, yellow, or orange
  - Borders: solid, dashed, or dotted
  - Text-alignment: left, center, right, or justify
- - Admonitions: caution, important, note, tip, warning
+ - Admonitions: attention, caution, danger, error, hint, important, note, tip, warning
  - Tables: moin-sortable, no-borders
  - Comments: comment
  - Position parsers and tables: float-left, float-right, inline, middle, clear-right, clear-left or clear-both
@@ -799,9 +799,9 @@ extra features. The following is a table of MoinMoin's macros.
 +-------------------------------------------+------------------------------------------------------------+
 | ``<<FootNote(Note here)>>``               | Inserts a footnote saying "Note here"                      |
 +-------------------------------------------+------------------------------------------------------------+
-| ``<<FontAwesome(name,color,size)>>``      | displays Font Awsome icon, color and size are optional     |
+| ``<<FontAwesome(name,color,size)>>``      | Displays Font Awsome icon, color and size are optional     |
 +-------------------------------------------+------------------------------------------------------------+
-| ``<<Icon(my-icon.png)>>``                 | displays icon from /static/img/icons                       |
+| ``<<Icon(my-icon.png)>>``                 | Displays icon from /static/img/icons                       |
 +-------------------------------------------+------------------------------------------------------------+
 | ``<<Include(ItemOne/SubItem)>>``          | Embeds the contents of ``ItemOne/SubItem`` inline          |
 +-------------------------------------------+------------------------------------------------------------+
@@ -818,9 +818,23 @@ extra features. The following is a table of MoinMoin's macros.
 +-------------------------------------------+------------------------------------------------------------+
 | ``<<RandomItem(3)>>``                     | Inserts names of 3 random items                            |
 +-------------------------------------------+------------------------------------------------------------+
-| ``<<ShowIcons()>>``                       | displays all icons in /static/img/icons directory          |
+| ``<<RandomQuote(Itemname)>>``             | Select a random quote from the given item,                 |
+|                                           | or from FortuneCookies if omitted.                         |
++-------------------------------------------+------------------------------------------------------------+
+| ``<<ShowIcons()>>``                       | Displays all icons in /static/img/icons directory          |
++-------------------------------------------+------------------------------------------------------------+
+| ``<<ShowSmileys()>>``                     | Displays available smileys and the corresponding markup    |
++-------------------------------------------+------------------------------------------------------------+
+| ``<<ShowUserGroup()>>``                   | Displays metadata defined in usergroup attribute           |
++-------------------------------------------+------------------------------------------------------------+
+| ``<<ShowWikiDict()>>``                    | Displays metadata defined in wikidict attribute            |
++-------------------------------------------+------------------------------------------------------------+
+| ``<<SlideShow()>>``                       | Displays a link to start a slideshow for the current item  |
 +-------------------------------------------+------------------------------------------------------------+
 | ``<<TableOfContents(2)>>``                | Shows a table of contents up to level 2                    |
++-------------------------------------------+------------------------------------------------------------+
+| ``<<TitleIndex()>>``                      | Lists all itemnames for the namespace of the current item, |
+|                                           | grouped by initials                                        |
 +-------------------------------------------+------------------------------------------------------------+
 | ``<<Verbatim(`same` __text__)>>``         | Inserts text as entered, no markup rendering               |
 +-------------------------------------------+------------------------------------------------------------+
@@ -871,6 +885,7 @@ The **ItemList** macro accepts multiple named parameters: item, startswith, rege
     - <<ItemList(ordered='True')>> displays ordered list of subitems, default is unordered
     - <<ItemList(startswith="Foo")>> lists subitems starting with Foo
     - <<ItemList(regex="Foo$")>> lists subitems ending with Foo
+    - <<ItemList(tag="template")>> only include items with this tag
     - <<ItemList(skiptag="template")>> ignore items with this tag
     - <<ItemList(display="FullPath")>> default, displays full path to subitems
     - <<ItemList(display="ChildPath")>> displays last component of the FullPath, including the '/'
@@ -886,6 +901,11 @@ fixed_height and anniversary.
     - <<MonthCalendar(item="SampleUser",month=12)>>  Calendar of Page SampleUser, this year's december
     - <<MonthCalendar(month=12)>>  Calendar of current Page, this year's december
     - <<MonthCalendar(year=2022,month=12)>>  Calendar of December, 2022
+
+The **SlideShow** macro creates a link to start a presentation for the current item. The slides
+are separated by level 1 and 2 headings. The text before the first heading is ignored. Navigation
+within the slideshow can be controlled via corresponding buttons at the edge or bottom of the
+browser screen or using the left and right arrow keys.
 
 
 Smileys and Icons

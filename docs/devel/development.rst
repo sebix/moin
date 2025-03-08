@@ -5,22 +5,23 @@ Development
 Useful Resources
 ================
 
-IRC channels on chat.freenode.net (quick communication and discussion):
-
-* #moin-dev  (core development topics)
-* #moin  (user support, extensions)
-
-Wikis:
-
-* https://moinmo.in/  (production wiki, using moin 1.9)
+If you have any questions about MoinWiki you can use the following resources:
 
 Documentation (installation, configuration, user docs, api reference):
 
 * https://moin-20.readthedocs.io/en/latest/
 
-Repository, Issue tracker (bugs, proposals, todo), Code Review, etc.:
+Repository, Issue tracker (bugs, proposals, todo), Code Review, Discussions, etc.:
 
 * https://github.com/moinwiki/moin
+
+Wiki:
+
+* https://moinmo.in/MoinMoin2.0  (production wiki, using moin 1.9)
+
+IRC channel on libera.chat (quick communication and discussion):
+
+* #moin  (Web Chat: https://web.libera.chat/?#moin)
 
 
 Requirements for development
@@ -44,7 +45,7 @@ You can also find GUI clients there.
 Typical development workflow
 ============================
 
-This is the typical workflow for anyone that wants to contribute to the development of Moin2.
+This is the typical workflow for anyone who wants to contribute to the development of Moin2.
 
 create your development environment
 -----------------------------------
@@ -64,13 +65,13 @@ create your development environment
 * activate virtualenv::
 
     . activate  # Windows: activate
-* create a wiki instance and load sample data::
+* create a wiki instance and load help data and welcome pages::
 
-    ./m sample  # Windows: m sample
+    moin create-instance --full
 * start the built-in server::
 
-    ./m run  # Windows: m run
-* point your browser at http://127.0.0.1:8080/ to access your development wiki
+    moin run
+* point your browser at http://127.0.0.1:5000/ to access your development wiki
 * key ctrl+C to stop the built-in server
 
 add more tools, exercise tools
@@ -107,6 +108,7 @@ add more tools, exercise tools
 * create local docs::
 
     ./m docs  # Windows: m docs
+
 * set options on your favorite editor or IDE
 
   - convert tabs to 4 spaces
@@ -118,12 +120,44 @@ add more tools, exercise tools
 * if you want a Python IDE, try https://www.jetbrains.com/pycharm/ Free Community Edition
 * join #moin-dev IRC channel; ask questions, learn what other developers are doing
 
+install pre-commit hooks
+------------------------
+
+Some tools will inspect your changes as part of Git commit processing.
+
+* Black formats Python code to make it consistent and readable according to PEP 8 guidelines.
+* Ruff is a linter that detects style issues, errors and potential problems.
+* Bandit analyzes the code for possible security vulnerabilities and potential risks.
+
+Setup pre-commit hooks::
+
+    pre-commit install
+
+If your code
+change violates Black's coding standards (a changed line of code is > 120 characters) Black will
+update the file and fail the commit. Your repo will have 2 versions of the offending file:
+the staged file with your changes and an unstaged version with Black's corrections.
+
+To fix, unstage the file to merge your changes into Black's version, then restage the
+file and rerun commit.
+
+If Ruff or Bandit find errors, they will create error messages and cause the commit to fail. In this case,
+unstage the offending file, fix the errors, restage the file and rerun commit.
+
+Note that these same checks are made as part of GitHub push-merge processing.
+If there is an error the merge will fail. Fix the error, restage the file, and commit.
+
+Read more about
+
+* Black at https://black.readthedocs.io/en/stable/index.html
+* Ruff at https://github.com/astral-sh/ruff?tab=readme-ov-file#ruff
+* Bandit at https://bandit.readthedocs.io/en/latest/
+
 review configuration options
 ----------------------------
 
 * review https://moin-20.readthedocs.io/en/latest/admin/configure.html
-* following the instructions in wikiconfig.py, create wikiconfig_local.py and wikiconfig_editme.py
-* configure options by editing wikiconfig_editme.py
+* configure options by editing wikiconfig.py
 
   * set superuser privileges on at least one username
   * the default configuration options are commonly used, it is likely new bugs can be
@@ -181,21 +215,21 @@ develop a working solution
 review your working solution
 ----------------------------
 
+* do "pre-commit run" to check for style and security issues using Black, Ruff, and Bandit
+* do "./m coding-std" to check for coding errors (trailing spaces, template indentation and spacing)
 * use git diff, git status - read everything you changed - slowly, look for
   things that can be improved
 
   - if you have TortoiseGIT, use those graphical tools to review changes
 * look for poor variable names, spelling errors in comments, accidental addition
   or deletion of blank lines, complex code without comments, missing/extra spaces
-* fix everything you find before requesting feedback from others
-* run tests again "./m tests"
-* check for trailing spaces, line endings, template indentation "./m coding-std"
 * if Javascript files were changed, run https://www.jslint.com/
+* run tests again "./m tests"
+* do some final testing - edit an item and save, etc.
 
 publish your change
 -------------------
 
-* do some final testing - practically and using the unit tests
 * commit your changes to your local repo, use a concise commit comment
   describing the change
 
@@ -499,8 +533,8 @@ Wiki admins can change permissions via the ACL rules.
 
 To load the help docs::
 
-    moin load-help --namespace common  # images common to all languages
-    moin load-help --namespace en      # English text
+    moin load-help --namespace help-common  # images common to all languages
+    moin load-help --namespace help-en      # English text
 
 Multiple languages may be loaded. Current languages include::
 
@@ -515,12 +549,12 @@ When editing is complete run one or more of::
     moin maint-reduce-revisions -q <item-name> -n help-en --test true # lists selected items, no updates
     moin maint-reduce-revisions -q <item-name> -n help-en  # updates selected items
 
-Dump all the help files::
+Dump all the English help files to the version controlled directory::
 
-    moin dump-help -n en
+    moin dump-help -n help-en
 
-The above command may update meta files even though the data files have not changed, see #1533.
-Commit only the target data and meta files. Revert the other meta files.
+The above command may may be useful after updating one or more files. All of the files
+will be rewritten but only the changed files will be highlighted in version control.
 
 Moin Shell
 ==========
@@ -531,31 +565,36 @@ there may be an occasional need to access the moin shell directly::
     source <path-to-venv>/bin/activate  # or ". activate"  windows: "activate"
     moin -h                             # show help
 
-Package Release on test.pypi.org
-================================
 
-This procedure for updating test.pypi avoids adding release tags to master branch,
-hoping that someday there will be a real 2.0.0a1. Current state
-of moin 2 is pre-alpha.
 
-Commit or stash all versioned changes. Pull all updates from master repo. Create a release branch.
-Run `./m quickinstall` to update the venv and translations. Run tests.
-Add a tag with the next release number to the release branch::
 
-    git tag 2.0.0a14
 
-Install or upgrade release tools::
+Package Release on pypi.org and Github Releases
+===============================================
+
+* Commit or stash all versioned changes.
+* Pull all updates from master repo.
+* Run `./m quickinstall` and `./m extras` to update the venv and translations.
+* Update Development Status, etc. in pyproject.toml
+* Run tests.
+* Add a signed, annotated tag with the next release number to master branch::
+
+    git tag -s 2.0.0a1 -m "alpha release"
+
+* Install or upgrade release tools::
 
     pip install --upgrade setuptools wheel
     pip install --upgrade twine
     pip install --upgrade build
 
-Build the distribution and upload to test.pypi.org::
+* Delete all old releases from the moin/dist directory, else twine will upload them in the next step.
+
+* Build the distribution and upload to pypi.org::
 
     py -m build > build.log 2>&1  # check build.log for errors
-    py -m twine upload --repository testpypi dist/*
+    py -m twine upload dist/*
 
-Enter ID and password as requested.
+* Enter ID and password or API Token as requested.
 
 Test Build
 ----------
@@ -564,17 +603,59 @@ Create a new venv, install moin, create instance, start server, create item, mod
 
     <python> -m venv </path/to/new/virtual/environment>
     cd </path/to/new/virtual/environment>
-    source bin/activate  # scripts\activate
-    pip install --upgrade pip  # next command fails with pip 9.0.1 and maybe later versions
-    pip install --pre --index-url https://test.pypi.org/simple --extra-index-url https://pypi.org/simple moin
+    source bin/activate  # or "scripts\activate" on windows
+    pip install --pre moin
+    moin --help  # prove it works
+    # update wikiconfig.py  # default allows read-only, admins may load data
     moin create-instance --path <path/to/new/wikiconfig/dir>  # path optional, defaults to CWD
     cd <path/to/new/wikiconfig/dir>  # skip if using default CWD
     moin index-create
-    moin --help  # prove it works
-    moin run  # empty wiki
-    moin load-sample  # data but no index
-    moin index-build   # data with index
-    moin load-help -n en # load English help
-    moin load-help -n common # load help images
 
-Announce update on #moin, moin-devel@python.org.
+    moin welcome  # load welcome page (e.g. Home)
+    moin load-help -n help-en # load English help
+    moin load-help -n help-common # load help images
+    moin run  # wiki with English help and welcome pages
+
+Continue with Package Release
+-----------------------------
+
+Push the signed, annotated tag created above to github master::
+
+    git push moinwiki 2.0.0a1
+
+Create an ASCII-format detached signature named moin-2.0.0a1.tar.gz.asc.
+Windows developers should use Git-Bash to work around #1723.::
+
+    cd dist
+    gpg --detach-sign -a moin-2.0.0a1.tar.gz
+    cd ..
+
+Follow the instructions in the url below to update GitHub; drag & drop moin-2.0.0a1.tar.gz
+and moin-2.0.0a1.tar.gz.asc to upload files area. These files serve as
+a backup for the release sdist and the signature, so anybody can
+verify the sdist is authentic::
+
+    https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository
+
+Test the GitHub package release::
+
+    <python> -m venv </path/to/new/virtual/environment>
+    cd </path/to/new/virtual/environment>
+    source bin/activate  # or "scripts\activate" on windows
+    pip install git+https://github.com/moinwiki/moin@2.0.0a1
+    moin --help  # prove it works
+    # update wikiconfig.py  # default allows read-only, admins may load data
+    moin create-instance --path <path/to/new/wikiconfig/dir>  # path optional, defaults to CWD
+    cd <path/to/new/wikiconfig/dir>  # skip if using default CWD
+    moin index-create
+
+    moin welcome  # load welcome page (e.g. Home)
+    moin load-help -n help-en # load English help
+    moin load-help -n help-common # load help images
+    moin run  # wiki with English help and welcome pages
+
+Announce update on #moin, moin-devel@python.org, moin-user@python.org::
+
+    Moinmoin 2.0.0a1 has been released on https://pypi.org/project/moin/#history
+    and https://github.com/moinwiki/moin/releases. See https://moin-20.readthedocs.io/en/latest/,
+    use https://github.com/moinwiki/moin/issues to report bugs.

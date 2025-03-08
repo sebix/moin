@@ -1,4 +1,5 @@
 # Copyright: 2019 MoinMoin:KentWatsen
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -28,6 +29,8 @@ Parameters:
 
     skiptag: a tag name, items with tag will be skipped
 
+    tag: only include items that have been tagged with this name
+
     display: How should the link be displayed?
 
         Options:
@@ -41,8 +44,7 @@ Parameters:
                         blocks of lowercase characters or numbers and an
                         uppercase character.
 
-            ItemTitle : Use the title from the first header in the linked
-                        item [*** NOT IMPLEMENTED YET ***]
+            ItemTitle : Use the title from the first header in the linked item
 
 Notes:
 
@@ -65,9 +67,9 @@ import re
 from flask import request
 from flask import g as flaskg
 from moin.i18n import _
-from moin.utils.tree import moin_page
 from moin.utils.interwiki import split_fqname
-from moin.macros._base import MacroPageLinkListBase
+from moin.macros._base import MacroPageLinkListBase, get_item_names, fail_message
+from moin.converters._args_wiki import parse as parse_arguments
 
 
 class Macro(MacroPageLinkListBase):
@@ -80,72 +82,69 @@ class Macro(MacroPageLinkListBase):
         ordered = False
         display = "FullPath"
         skiptag = ""
+        tag = ""
 
-        # process input
-        args = []
+        # process arguments
         if arguments:
-            args = arguments[0].split(',')
-        for arg in args:
-            try:
-                key, val = [x.strip() for x in arg.split('=')]
-            except ValueError:
-                raise ValueError(_('ItemList macro: Argument "%s" does not follow <key>=<val> format '
-                                   '(arguments, if more than one, must be comma-separated).' % arg))
+            args = parse_arguments(arguments[0])
 
-            if len(val) < 2 or (val[0] != "'" and val[0] != '"') and val[-1] != val[0]:
-                raise ValueError(_("ItemList macro: The key's value must be bracketed by matching quotes."))
-            val = val[1:-1]  # strip out the doublequote characters
-
-            if key == "item":
-                item = val
-            elif key == "startswith":
-                startswith = val
-            elif key == "regex":
-                regex = val
-            elif key == "ordered":
-                if val == "False":
-                    ordered = False
-                elif val == "True":
-                    ordered = True
+            for key, val in args.items():
+                if not key and val:
+                    err_msg = _(
+                        'ItemList macro: Argument "{arg}" does not follow <key>=<val> format '
+                        "(arguments, if more than one, must be comma-separated)."
+                    ).format(arg=val)
+                    return fail_message(err_msg, alternative)
+                if key == "item":
+                    item = val
+                elif key == "startswith":
+                    startswith = val
+                elif key == "regex":
+                    regex = val
+                elif key == "ordered":
+                    if val == "False":
+                        ordered = False
+                    elif val == "True":
+                        ordered = True
+                    else:
+                        err_msg = _('The value for "{key}" must be "True" or "False", got "{val}".').format(
+                            key=key, val=val
+                        )
+                        return fail_message(err_msg, alternative)
+                elif key == "display":
+                    display = val  # let 'create_pagelink_list' throw an exception if needed
+                elif key == "skiptag":
+                    skiptag = val
+                elif key == "tag":
+                    tag = val
                 else:
-                    raise ValueError(_('ItemList macro: The value must be "True" or "False". (got "%s")' % val))
-            elif key == "display":
-                display = val  # let 'create_pagelink_list' throw an exception if needed
-            elif key == "skiptag":
-                skiptag = val
-            else:
-                raise KeyError(_('ItemList macro: Unrecognized key "%s".' % key))
+                    err_msg = _('Unrecognized key "{key}".').format(key=key)
+                    return fail_message(err_msg, alternative)
 
         # use curr item if not specified
         if item is None:
             item = request.path[1:]
-            if item.startswith('+modify/'):
-                item = item.split('/', 1)[1]
+            if item.startswith("+modify/"):
+                item = item.split("/", 1)[1]
 
+        if item == "/":
+            item = ""
         # verify item exists and current user has read permission
-        if item != "":
+        elif item != "":
             if not flaskg.storage.get_item(**(split_fqname(item).query)):
-                message = _('Item does not exist or read access blocked by ACLs: {0}'.format(item))
-                admonition = moin_page.div(attrib={moin_page.class_: 'important'},
-                                           children=[moin_page.p(children=[message])])
-                return admonition
+                err_msg = _("Item does not exist or read access blocked by ACLs: {0}").format(item)
+                return fail_message(err_msg, alternative)
 
-        # process subitems
-        children = self.get_item_names(item, startswith=startswith, skiptag=skiptag)
         if regex:
             try:
-                regex_re = re.compile(regex, re.IGNORECASE)
+                re.compile(regex, re.IGNORECASE)
             except re.error as err:
-                raise ValueError(_("ItemList macro: Error in regex {0!r}: {1}".format(regex, err)))
-            newlist = []
-            for child in children:
-                if regex_re.search(child.fullname):
-                    newlist.append(child)
-            children = newlist
+                err_msg = _("Error in regex {0!r}: {1}").format(regex, err)
+                return fail_message(err_msg, alternative)
+
+        children = get_item_names(item, startswith=startswith, skiptag=skiptag, tag=tag, regex=regex)
+
         if not children:
-            empty_list = moin_page.list(attrib={moin_page.item_label_generate: ordered and 'ordered' or 'unordered'})
-            item_body = moin_page.list_item_body(children=[_("<ItemList macro: No matching items were found.>")])
-            item = moin_page.list_item(children=[item_body])
-            empty_list.append(item)
-            return empty_list
-        return self.create_pagelink_list(children, ordered, display)
+            return fail_message(_("No matching items were found"), alternative, severity="attention")
+
+        return self.create_pagelink_list(children, alternative, ordered, display)

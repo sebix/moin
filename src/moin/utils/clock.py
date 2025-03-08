@@ -1,5 +1,6 @@
 # Copyright: 2001-2003 Juergen Hermann <jh@web.de>
 # Copyright: 2003-2006 MoinMoin:ThomasWaldmann
+# Copyright: 2024 MoinMoin:UlrichB
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
@@ -13,6 +14,7 @@ from functools import wraps, partial
 from flask import g as flaskg
 
 from moin import log
+
 logging = log.getLogger(__name__)
 
 
@@ -21,11 +23,12 @@ class Clock:
     Helper class for measuring the time needed to run code.
 
     Usage:
-        flaskg.clock.start('mytimer')
+        flaskg.clock.start("mytimer")
         # do something
-        flaskg.clock.stop('mytimer')
+        flaskg.clock.stop("mytimer", comment="add this to the log message")
+        # the optional comment field is added to the log message
         # or if you want to use its value later
-        timerval = flaskg.clock.stop('mytimer')
+        timerval = flaskg.clock.stop("mytimer")
 
     Starting a timer multiple times is supported but the
     one started last has to be stopped first.
@@ -39,17 +42,17 @@ class Clock:
             self.timers[timer] = []
         self.timers[timer].append(time.time())
 
-    def stop(self, timer):
+    def stop(self, timer, comment=""):
         if timer in self.timers:
             value = time.time() - self.timers[timer].pop()
-            logging.debug('timer {0}({1}): {2:.2f}ms'.format(timer, len(self.timers[timer]), value * 1000))
+            logging.debug(f"timer {timer}({len(self.timers[timer])}): {value * 1000:.2f}ms {comment}")
             if not self.timers[timer]:
                 del self.timers[timer]
             return value
 
     def __del__(self):
         if self.timers:
-            logging.warning('These timers have not been stopped: {0}'.format(', '.join(self.timers.keys())))
+            logging.warning(f"These timers have not been stopped: {', '.join(self.timers.keys())}")
 
 
 def add_timing(f, name=None):
@@ -62,6 +65,7 @@ def add_timing(f, name=None):
         retval = f(*args, **kw)
         flaskg.clock.stop(name)
         return retval
+
     return wrapper
 
 
