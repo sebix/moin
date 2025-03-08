@@ -89,17 +89,17 @@
                     {%- set trail_items = theme_supp.path_breadcrumbs() %}
                     {%- if trail_items %}
                         <ul>
-                        {%- for wiki_name, fqname, item_href, exists, err in trail_items %}
+                        {%- for wiki_name, fqname, item_href, aliases, err in trail_items %}
                             {%- if not loop.last %}
                                 <li>
-                                    {{ utils.page_trail_link(wiki_name, fqname, exists) }}
-                                    {{ utils.alias_list(theme_supp.get_fqnames(fqname)) }}
+                                    {{ utils.page_trail_link(wiki_name, fqname) }}
+                                    {{ utils.alias_list(aliases) }}
                                     <!--<i class="fa fa-angle-double-right fa-fw"></i>-->
                                 </li>
                             {%- endif %}
                             {%- if loop.last %}
                                 <li>
-                                    {%- for segment_name, segment_path, exists in theme_supp.location_breadcrumbs(fqname) -%}
+                                    {%- for segment_name, segment_path in theme_supp.location_breadcrumbs(fqname) -%}
                                         {%- if not loop.last %}
                                             <a href="{{ url_for('frontend.show_item', item_name=segment_path) }}" {%- if not exists -%}class="moin-nonexistent"{%- endif -%}>
                                                 {{ segment_name|shorten_fqname }}
@@ -110,7 +110,7 @@
                                             </a>
                                         {%- endif %}
                                     {%- endfor %}
-                                    {{ utils.alias_list(theme_supp.get_fqnames(fqname)) }}
+                                    {{ utils.alias_list(aliases) }}
                                 </li>
                                 {%- if title_name %}
                                     <div>
