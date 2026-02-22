@@ -13,6 +13,7 @@ work without setting them (like data_dir).
 
 from os.path import abspath, dirname, join
 
+from moin.config import PasswordHasherConfig
 from moin.config.default import DefaultConfig
 
 
@@ -32,7 +33,7 @@ class Config(DefaultConfig):
     interwiki_map[interwikiname] = "http://localhost:8080/"
     email_tracebacks = False
 
-    password_hasher_config = dict(
+    password_hasher_config = PasswordHasherConfig(
         # For tests, use minimal Argon2 parameters for speed
         # DO NOT use these values in production!
         time_cost=1,  # minimum iterations
