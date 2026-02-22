@@ -51,14 +51,12 @@ class WikiConfigProtocol(Protocol):
     acl_mapping: AclMapping
     acl_rights_contents: list[str]
     acl_rights_functions: list[str]
-    acls: dict[str, AclConfig]
     admin_emails: list[str]
     auth: list[BaseAuth]
     auth_can_logout: list[str]
     auth_login_inputs: list[str]
     auth_have_login: bool
     backend_mapping: BackendMapping
-    backends: dict[str, str]
     config_check_enabled: bool
     content_dir: str
     content_security_policy: str
@@ -88,12 +86,10 @@ class WikiConfigProtocol(Protocol):
     mail_from: str | None
     mail_username: str | None
     mail_password: str | None
-    mail_sendmail: str | None
     mail_smarthost: str | None
     markdown_extensions: list[str] = []
     mimetypes_to_index_as_empty: list[str] = []
     namespace_mapping: NamespaceMapping
-    namespaces: dict[str, str]
     navi_bar: NaviBarEntries
     registration_hint: str
     registration_only_by_superuser: bool
@@ -107,7 +103,6 @@ class WikiConfigProtocol(Protocol):
     template_dirs: list[str]
     theme_default: str
     timezone_default: str
-    uri: str
     user_defaults: dict[str, Any]
     user_email_unique: bool
     user_email_verification: bool

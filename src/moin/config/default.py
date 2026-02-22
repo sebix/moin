@@ -16,19 +16,17 @@ from __future__ import annotations
 import re
 import os
 
-from typing import Any, TYPE_CHECKING, NamedTuple, TypedDict
+from typing import Any, TYPE_CHECKING, NamedTuple
 
 from babel import Locale, parse_locale
 
-from moin import log
-from moin.i18n import _, L_, N_
-from moin import error
+from moin import datastructures, error, log
+from moin.auth import MoinAuth  # used in eval()
+from moin.i18n import _, L_
 from moin.config import IndexStorageConfig, PasswordHasherConfig
 from moin.constants.rights import ACL_RIGHTS_CONTENTS, ACL_RIGHTS_FUNCTIONS
 from moin.constants.keys import *
 from moin.items.content import content_registry_enable, content_registry_disable
-from moin import datastructures
-from moin.auth import MoinAuth
 from moin.utils import plugins
 from moin.utils.crypto import PasswordHasher
 from moin.security import AccessControlList, DefaultSecurityPolicy
@@ -36,7 +34,7 @@ from moin.security import AccessControlList, DefaultSecurityPolicy
 if TYPE_CHECKING:
     from collections.abc import Callable
     from moin.auth import BaseAuth
-    from moin.config import AclConfig, AclMapping, BackendMapping, ItemViews, NamespaceMapping, NaviBarEntries
+    from moin.config import AclMapping, BackendMapping, ItemViews, NamespaceMapping, NaviBarEntries
     from moin.datastructures.backends import BaseDictsBackend, BaseGroupsBackend
 
 logging = log.getLogger(__name__)
@@ -76,19 +74,20 @@ class ConfigFunctionality:
     class for the benefit of the WikiConfig macro.
     """
 
+    create_backend: bool = False
+    destroy_backend: bool = False
+
     # fields dynamically added to the configuration via invocation of _add_options_to_defconfig at the end of this file
     acl_functions: str
     acl_mapping: AclMapping
     acl_rights_contents: list[str]
     acl_rights_functions: list[str]
-    acls: dict[str, AclConfig]
     admin_emails: list[str]
     auth: list[BaseAuth]
     auth_can_logout: list[str]
     auth_have_login: bool
     auth_login_inputs: list[str]
     backend_mapping: BackendMapping
-    backends: dict[str, str | None]
     cache: ConfigDataCache
     config_check_enabled: bool
     content_dir: str
@@ -99,7 +98,6 @@ class ConfigFunctionality:
     contenttype_enabled: list[str]
     data_dir: str
     default_root: str
-    destroy_backend: bool
     dicts: Callable[[], BaseDictsBackend]
     edit_lock_time: int
     edit_locking_policy: str
@@ -119,12 +117,11 @@ class ConfigFunctionality:
     mail_enabled: bool
     mail_from: str | None
     mail_password: str | None
-    mail_sendmail: str | None
     mail_smarthost: str | None
     mail_username: str | None
     markdown_extensions: list[str] = []
+    mimetypes_to_index_as_empty: list[str] = []
     namespace_mapping: NamespaceMapping
-    namespaces: dict[str, str]
     navi_bar: NaviBarEntries
     password_hasher_config: PasswordHasherConfig
     registration_hint: str
@@ -139,11 +136,12 @@ class ConfigFunctionality:
     template_dirs: list[str]
     theme_default: str
     timezone_default: str
-    uri: str
     user_defaults: dict[str, Any]
     user_email_unique: bool
     user_email_verification: bool
+    user_gravatar_default_img: str
     user_homewiki: str
+    user_use_gravatar: bool
     wiki_local_dir: str
     wikiconfig_dir: str
 
@@ -160,8 +158,9 @@ class ConfigFunctionality:
         self.custom_css_path = False
 
         # define directories
-        data_dir = os.path.normpath(self.data_dir)
-        self.data_dir = data_dir
+        self.wikiconfig_dir = os.path.abspath(self.wikiconfig_dir)
+        self.wiki_local_dir = os.path.abspath(self.wiki_local_dir)
+        self.data_dir = os.path.abspath(self.data_dir)
 
         # Try to decode certain names that allow Unicode
         self._decode()
@@ -321,6 +320,7 @@ file. It should match the actual charset of the configuration file.
             "timezone_default",
             "locale_default",
             "wiki_local_dir",
+            "wikiconfig_dir",
         )
 
         for name in decode_names:
@@ -609,7 +609,9 @@ options_no_group_name: dict[str, OptionsGroup] = {
         "Data Storage",
         None,
         (
-            Option("data_dir", "./data/", "Path to the data directory."),
+            Option("wikiconfig_dir", "wiki", "Path to the wiki folder containing the wiki configuration."),
+            Option("wiki_local_dir", "wiki_local", "Path to the local wiki data."),
+            Option("data_dir", "data", "Path to the data directory."),
             Option("plugin_dirs", [], "Plugin directories."),
             Option("interwiki_map", {}, "Dictionary of wiki_name -> wiki_url"),
             Option(
@@ -700,6 +702,8 @@ options_no_group_name: dict[str, OptionsGroup] = {
                 },
                 "Default attributes of the user object",
             ),
+            Option("user_use_gravatar", False, "Use gravatar for moin wiki user"),
+            Option("user_gravatar_default_img", "blank", "Default image for user gravatar"),
         ),
     ),
     # ==========================================================================
@@ -743,6 +747,8 @@ options_no_group_name: dict[str, OptionsGroup] = {
                 "Content security policy in report-only mode.",
             ),
             Option("content_security_policy_limit_per_day", 100, "Limit of reports logged per day."),
+            # admin emails
+            Option("admin_emails", [], 'Administrator email addresses, e.g. ["admin <admin@example.org>"]'),
         ),
     ),
 }
