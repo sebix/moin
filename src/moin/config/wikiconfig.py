@@ -57,10 +57,11 @@ class Config(DefaultConfig):
     data_dir = os.path.join(instance_dir, "data")
     index_storage = "FileStorage", (os.path.join(instance_dir, "index"),), {}
 
+    # store custom logos, CSS, templates, etc. here
+    wiki_local = os.path.join(wikiconfig_dir, "wiki_local")
+
     # Set up Moin to serve static files, or configure your web server to serve static files
-    serve_files = dict(
-        wiki_local=os.path.join(wikiconfig_dir, "wiki_local")  # store custom logos, CSS, templates, etc. here
-    )
+    serve_files = {"wiki_local": wiki_local}
     docs = os.path.join(wikiconfig_dir, "docs", "_build", "html")
     if os.path.isdir(docs):
         serve_files["docs"] = docs
@@ -69,7 +70,7 @@ class Config(DefaultConfig):
         serve_files["external_docs"] = "https://moin-20.readthedocs.io/en/latest/"
 
     # Copy templates/snippets.html to the directory below and edit as required to customize logos, etc.
-    template_dirs = [os.path.join(wikiconfig_dir, "wiki_local")]
+    template_dirs = [wiki_local]
 
     # It is required that you set interwikiname to a unique, stable, and non-empty name.
     interwikiname = "MyMoinMoin"
