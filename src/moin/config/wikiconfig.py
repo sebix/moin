@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import os
 
-from moin.config import AclConfig
+from moin.config import AclConfig, IndexStorageConfig
 from moin.config.default import DefaultConfig
 from moin.utils import get_xstatic_module_path_map
 from moin.utils.interwiki import InterWikiMap
@@ -55,7 +55,7 @@ class Config(DefaultConfig):
     wikiconfig_dir = os.path.abspath(os.path.dirname(__file__))
     instance_dir = os.path.join(wikiconfig_dir, "wiki")
     data_dir = os.path.join(instance_dir, "data")
-    index_storage = "FileStorage", (os.path.join(instance_dir, "index"),), {}
+    index_storage = IndexStorageConfig(name="FileStorage", args=(os.path.join(instance_dir, "index"),), kwargs={})
 
     # store custom logos, CSS, templates, etc. here
     wiki_local = os.path.join(wikiconfig_dir, "wiki_local")

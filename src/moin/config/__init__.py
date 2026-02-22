@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable, TypeAlias, TypedDict, TYPE_CHECKING
+from typing import Any, NamedTuple, Protocol, runtime_checkable, TypeAlias, TypedDict, TYPE_CHECKING
 from collections.abc import Callable
 
 from moin.datastructures.backends import BaseDictsBackend, BaseGroupsBackend
@@ -30,7 +30,11 @@ class AclConfig(TypedDict):
 
 AclMapping: TypeAlias = list[tuple[str, AclConfig]]
 
-IndexStorageConfig: TypeAlias = tuple[str, tuple[Any, ...], dict[str, Any]]
+
+class IndexStorageConfig(NamedTuple):
+    name: str
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
 
 
 class PasswordHasherConfig(TypedDict):

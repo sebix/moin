@@ -23,7 +23,7 @@ from babel import Locale, parse_locale
 from moin import log
 from moin.i18n import _, L_, N_
 from moin import error
-from moin.config import PasswordHasherConfig
+from moin.config import IndexStorageConfig, PasswordHasherConfig
 from moin.constants.rights import ACL_RIGHTS_CONTENTS, ACL_RIGHTS_FUNCTIONS
 from moin.constants.keys import *
 from moin.items.content import content_registry_enable, content_registry_disable
@@ -107,7 +107,7 @@ class ConfigFunctionality:
     endpoints_excluded: list[str]
     expanded_quicklinks_size: int
     groups: Callable[[], BaseGroupsBackend]
-    index_storage: tuple[str, list[Any] | tuple[Any, ...], dict[str, Any]]
+    index_storage: IndexStorageConfig
     instance_dir: str
     interwikiname: str
     interwiki_map: dict[str, str]
