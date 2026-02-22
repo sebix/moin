@@ -35,6 +35,7 @@ Usage (to display a menu of commands):
 """
 
 import os
+import os.path
 import subprocess
 import sys
 import platform
@@ -243,18 +244,6 @@ def delete_files(pattern):
     print('Deleted %s files matching "%s".' % (matches, pattern))
 
 
-def get_bootstrap_data_location():
-    """Return the virtual environment site-packages/xstatic/pkg/bootstrap/data location."""
-    command = 'python -c "from xstatic.pkg.bootstrap import BASE_DIR; print(BASE_DIR)"'
-    return subprocess.check_output(command, shell=True).decode()
-
-
-def get_pygments_data_location():
-    """Return the virtual environment site-packages/xstatic/pkg/pygments/data location."""
-    command = 'python -c "from xstatic.pkg.pygments import BASE_DIR; print(BASE_DIR)"'
-    return subprocess.check_output(command, shell=True).decode()
-
-
 def create_m():
     """Create an 'm.bat' or 'm' bash script that will run quickinstall.py using this Python"""
     if WINDOWS_OS:
@@ -450,13 +439,9 @@ class Commands:
 
     def cmd_css(self, *args):
         """run sass to update basic theme CSS files"""
-        bootstrap_loc = get_bootstrap_data_location().strip() + "/scss"
-        pygments_loc = get_pygments_data_location().strip() + "/css"
-        basic_loc = "src/moin/themes/basic"
-
-        print("Running sass to update Basic theme CSS files...")
-        includes = f"--load-path={bootstrap_loc} --load-path={pygments_loc}"
-        command = f"cd {basic_loc}{SEP} sass --verbose {includes} scss/theme.scss static/css/theme.css"
+        print("Running sass to update Basic theme CSS files. This requires Node.js and NPM to be installed locally.")
+        build_css_dir = os.path.join("contrib", "css-build")
+        command = f"cd {build_css_dir}{SEP}npm install{SEP}npm run build"
         result = subprocess.call(command, shell=True)
         if result == 0:
             print("Success: Basic theme CSS files updated.")
