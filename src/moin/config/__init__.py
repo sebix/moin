@@ -30,7 +30,7 @@ class AclConfig(TypedDict):
 
 AclMapping: TypeAlias = list[tuple[str, AclConfig]]
 
-IndexStorageConfig: TypeAlias = tuple[str, tuple[str, Any], dict]
+IndexStorageConfig: TypeAlias = tuple[str, tuple[Any, ...], dict[str, Any]]
 
 
 class PasswordHasherConfig(TypedDict):
