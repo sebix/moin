@@ -157,6 +157,8 @@ class ConfigFunctionality:
         if self.config_check_enabled:
             self._config_check()
 
+        self.custom_css_path = False
+
         # define directories
         data_dir = os.path.normpath(self.data_dir)
         self.data_dir = data_dir

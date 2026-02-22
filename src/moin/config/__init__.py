@@ -66,6 +66,7 @@ class WikiConfigProtocol(Protocol):
     content_security_policy_limit_per_day: int
     contenttype_disabled: list[str]
     contenttype_enabled: list[str]
+    custom_css_path: bool
     data_dir: str
     default_root: str
     destroy_backend: bool
