@@ -113,6 +113,7 @@ class WikiConfigProtocol(Protocol):
     user_gravatar_default_img: str
     user_homewiki: str
     user_use_gravatar: bool
+    wiki_local_dir: str
     wikiconfig_dir: str
 
     _plugin_modules: list[str]

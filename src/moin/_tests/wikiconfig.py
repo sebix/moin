@@ -24,6 +24,7 @@ class Config(DefaultConfig):
 
     wikiconfig_dir = abspath(dirname(__file__))
     instance_dir = join(wikiconfig_dir, "wiki")
+    wiki_local_dir = join(wikiconfig_dir, "wiki_local")
     data_dir = join(instance_dir, "data")
     index_storage = IndexStorageConfig(name="FileStorage", args=(join(instance_dir, "index"),), kwargs={})
     default_acl = None

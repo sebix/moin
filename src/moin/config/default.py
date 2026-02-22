@@ -144,6 +144,7 @@ class ConfigFunctionality:
     user_email_unique: bool
     user_email_verification: bool
     user_homewiki: str
+    wiki_local_dir: str
     wikiconfig_dir: str
 
     _plugin_modules: list[str]
@@ -317,6 +318,7 @@ file. It should match the actual charset of the configuration file.
             "theme_default",
             "timezone_default",
             "locale_default",
+            "wiki_local_dir",
         )
 
         for name in decode_names:
