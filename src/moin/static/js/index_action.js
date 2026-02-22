@@ -200,7 +200,7 @@ $("document").ready(function () {
         // process delete or destroy action
         var comment = $(".popup-comment").val(),
             action = $(".popup-action").val();
-        comment = $.trim(comment);
+        comment = comment.trim();
         do_action(comment, action);
         hidepop();
     });
