@@ -17,6 +17,7 @@ import re
 import os
 
 from typing import Any, TYPE_CHECKING, NamedTuple
+from typing_extensions import Final
 
 from babel import Locale, parse_locale
 
@@ -286,8 +287,26 @@ configuration for typos before requesting support or reporting a bug.
 """.format(", ".join(unknown))
             raise error.ConfigurationError(msg)
 
+    DECODE_NAMES: Final = (
+        "sitename",
+        "interwikiname",
+        "user_homewiki",
+        "interwiki_preferred",
+        "item_license",
+        "mail_from",
+        "item_dict_regex",
+        "item_group_regex",
+        "acl_functions",
+        "supplementation_item_names",
+        "html_pagetitle",
+        "theme_default",
+        "timezone_default",
+        "locale_default",
+    )
+
     def _decode(self):
-        """Try to decode certain names, ignore unicode values
+        """
+        Try to decode certain names, ignore unicode values
 
         Try to decode str using utf-8. If the decode fail, raise FatalError.
 
@@ -304,26 +323,7 @@ Also check your "-*- coding -*-" line at the top of your configuration
 file. It should match the actual charset of the configuration file.
 """
 
-        decode_names = (
-            "sitename",
-            "interwikiname",
-            "user_homewiki",
-            "interwiki_preferred",
-            "item_license",
-            "mail_from",
-            "item_dict_regex",
-            "item_group_regex",
-            "acl_functions",
-            "supplementation_item_names",
-            "html_pagetitle",
-            "theme_default",
-            "timezone_default",
-            "locale_default",
-            "wiki_local_dir",
-            "wikiconfig_dir",
-        )
-
-        for name in decode_names:
+        for name in self.DECODE_NAMES:
             attr = getattr(self, name, None)
             if attr is not None:
                 # Try to decode strings
