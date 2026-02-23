@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable, TypeAlias, TypedDict, TYPE_CHECKING
+from typing import Any, NamedTuple, Protocol, runtime_checkable, TypeAlias, TypedDict, TYPE_CHECKING
 from collections.abc import Callable
 
 from moin.datastructures.backends import BaseDictsBackend, BaseGroupsBackend
@@ -30,7 +30,11 @@ class AclConfig(TypedDict):
 
 AclMapping: TypeAlias = list[tuple[str, AclConfig]]
 
-IndexStorageConfig: TypeAlias = tuple[str, tuple[str, Any], dict]
+
+class IndexStorageConfig(NamedTuple):
+    name: str
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
 
 
 class PasswordHasherConfig(TypedDict):
@@ -47,14 +51,12 @@ class WikiConfigProtocol(Protocol):
     acl_mapping: AclMapping
     acl_rights_contents: list[str]
     acl_rights_functions: list[str]
-    acls: dict[str, AclConfig]
     admin_emails: list[str]
     auth: list[BaseAuth]
     auth_can_logout: list[str]
     auth_login_inputs: list[str]
     auth_have_login: bool
     backend_mapping: BackendMapping
-    backends: dict[str, str]
     config_check_enabled: bool
     content_dir: str
     content_security_policy: str
@@ -62,6 +64,7 @@ class WikiConfigProtocol(Protocol):
     content_security_policy_limit_per_day: int
     contenttype_disabled: list[str]
     contenttype_enabled: list[str]
+    custom_css_path: bool
     data_dir: str
     default_root: str
     destroy_backend: bool
@@ -83,12 +86,10 @@ class WikiConfigProtocol(Protocol):
     mail_from: str | None
     mail_username: str | None
     mail_password: str | None
-    mail_sendmail: str | None
     mail_smarthost: str | None
     markdown_extensions: list[str] = []
     mimetypes_to_index_as_empty: list[str] = []
     namespace_mapping: NamespaceMapping
-    namespaces: dict[str, str]
     navi_bar: NaviBarEntries
     registration_hint: str
     registration_only_by_superuser: bool
@@ -102,13 +103,13 @@ class WikiConfigProtocol(Protocol):
     template_dirs: list[str]
     theme_default: str
     timezone_default: str
-    uri: str
     user_defaults: dict[str, Any]
     user_email_unique: bool
     user_email_verification: bool
     user_gravatar_default_img: str
     user_homewiki: str
     user_use_gravatar: bool
+    wiki_local_dir: str
     wikiconfig_dir: str
 
     _plugin_modules: list[str]

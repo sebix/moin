@@ -13,6 +13,8 @@ Use create_app(config) to create the WSGI application (using Flask).
 
 from __future__ import annotations
 
+from typing import Any
+
 import os
 import sys
 
@@ -29,8 +31,10 @@ from flask_theme import setup_themes
 from jinja2 import ChoiceLoader, FileSystemLoader
 from whoosh.index import EmptyIndexError
 
-from moin import auth, user, config
+from moin import auth, user, config, log
+from moin.config import WikiConfigProtocol
 from moin.constants.misc import ANON
+from moin.error import ConfigurationError
 from moin.i18n import i18n_init
 from moin.search import SearchForm
 from moin.storage.middleware import protecting, indexing, routing
@@ -40,16 +44,69 @@ from moin.utils.clock import Clock
 from moin.utils.forms import make_generator
 from moin.wikiutil import WikiLinkAnalyzer
 
-from moin import log
-
-from typing import Any
-
 logging = log.getLogger(__name__)
 
 
 if os.getcwd() not in sys.path and "" not in sys.path:
     # required in cases where wikiconfig_local.py imports wikiconfig_editme.py, see #698
     sys.path.append(os.getcwd())
+
+
+def configure_flask(
+    app: Flask,
+    info_name: str,
+    flask_config_file: str | PathLike[str] | None = None,
+    flask_config_dict: dict[str, Any] | None = None,
+) -> None:
+    if flask_config_file:
+        app.config.from_pyfile(path.abspath(flask_config_file))
+    else:
+        if not app.config.from_envvar("MOINCFG", silent=True):
+            # no MOINCFG env variable set, try stuff in cwd:
+            flask_config_file = path.abspath("wikiconfig_local.py")
+            if not path.exists(flask_config_file):
+                flask_config_file = path.abspath("wikiconfig.py")
+                if not path.exists(flask_config_file):
+                    if info_name == "create-instance":  # moin CLI
+                        config_path = path.dirname(config.__file__)
+                        flask_config_file = path.join(config_path, "wikiconfig.py")
+                    else:
+                        flask_config_file = None
+            if flask_config_file:
+                app.config.from_pyfile(path.abspath(flask_config_file))
+
+    if flask_config_dict:
+        app.config.update(flask_config_dict)
+
+
+def load_moin_config(
+    app: Flask, moin_config_class: type | None = None, warn_default: bool = True, **kwargs: Any
+) -> WikiConfigProtocol:
+
+    if not moin_config_class:
+        moin_config_class = app.config.get("MOINCFG")
+
+    if not moin_config_class:
+        if warn_default:
+            logging.warning("using builtin default configuration")
+        from moin.config.default import DefaultConfig
+
+        moin_config_class = DefaultConfig
+
+    for key, value in kwargs.items():
+        setattr(moin_config_class, key, value)
+
+    if getattr(moin_config_class, "secrets", None) is None:
+        # reuse the secret configured for flask (which is required for sessions)
+        setattr(moin_config_class, "secrets", app.config.get("SECRET_KEY"))
+
+    cfg = moin_config_class()
+    if not isinstance(cfg, WikiConfigProtocol):
+        raise ConfigurationError("Configuration does not implement WikiConfigProtocol")
+
+    cfg.custom_css_path = os.path.isfile(os.path.join(cfg.wiki_local_dir, "custom.css"))
+
+    return cfg
 
 
 def create_app(config: str | PathLike[str] | None = None) -> Flask:
@@ -101,38 +158,10 @@ def create_app_ext(
         return app
 
     clock.start("create_app load config")
-    if flask_config_file:
-        app.config.from_pyfile(path.abspath(flask_config_file))
-    else:
-        if not app.config.from_envvar("MOINCFG", silent=True):
-            # no MOINCFG env variable set, try stuff in cwd:
-            flask_config_file = path.abspath("wikiconfig_local.py")
-            if not path.exists(flask_config_file):
-                flask_config_file = path.abspath("wikiconfig.py")
-                if not path.exists(flask_config_file):
-                    if info_name == "create-instance":  # moin CLI
-                        config_path = path.dirname(config.__file__)
-                        flask_config_file = path.join(config_path, "wikiconfig.py")
-                    else:
-                        flask_config_file = None
-            if flask_config_file:
-                app.config.from_pyfile(path.abspath(flask_config_file))
-    if flask_config_dict:
-        app.config.update(flask_config_dict)
-    Config = moin_config_class
-    if not Config:
-        Config = app.config.get("MOINCFG")
-    if not Config:
-        if warn_default:
-            logging.warning("using builtin default configuration")
-        from moin.config.default import DefaultConfig as Config
-    for key, value in kwargs.items():
-        setattr(Config, key, value)
-    if Config.secrets is None:
-        # reuse the secret configured for flask (which is required for sessions)
-        Config.secrets = app.config.get("SECRET_KEY")
-    app.cfg = Config()
+    configure_flask(app, info_name, flask_config_file, flask_config_dict)
+    app.cfg = load_moin_config(app, moin_config_class, warn_default, **kwargs)
     clock.stop("create_app load config")
+
     clock.start("create_app register")
     # register converters
     from werkzeug.routing import PathConverter
@@ -174,20 +203,24 @@ def create_app_ext(
     app.link_analyzer = WikiLinkAnalyzer(app)
 
     clock.stop("create_app register")
+
     clock.start("create_app flask-cache")
     # 'SimpleCache' caching uses a dict and is not thread safe according to the docs.
     cache = Cache(config={"CACHE_TYPE": "SimpleCache"})
     cache.init_app(app)
     app.cache = cache
     clock.stop("create_app flask-cache")
+
     # Initialize storage
     clock.start("create_app init backends")
     # start init_backends
     _init_backends(app, info_name, clock)
     clock.stop("create_app init backends")
+
     clock.start("create_app flask-babel")
     i18n_init(app)
     clock.stop("create_app flask-babel")
+
     # configure templates
     clock.start("create_app flask-theme")
     setup_themes(app)
@@ -195,14 +228,15 @@ def create_app_ext(
         app.jinja_env.loader = ChoiceLoader([FileSystemLoader(app.cfg.template_dirs), app.jinja_env.loader])
     app.register_error_handler(403, themed_error)
     app.context_processor(inject_common_template_vars)
-    app.cfg.custom_css_path = os.path.isfile("wiki_local/custom.css")
     setup_jinja_env(app.jinja_env)
     clock.stop("create_app flask-theme")
+
     # Create a global counter to limit Content Security Policy reports and prevent spam
     app.csp_count = 0
     app.csp_last_date = ""
     clock.stop("create_app total")
     del clock
+
     return app
 
 

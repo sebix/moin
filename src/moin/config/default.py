@@ -16,19 +16,18 @@ from __future__ import annotations
 import re
 import os
 
-from typing import Any, TYPE_CHECKING, NamedTuple, TypedDict
+from typing import Any, TYPE_CHECKING, NamedTuple
+from typing_extensions import Final
 
 from babel import Locale, parse_locale
 
-from moin import log
-from moin.i18n import _, L_, N_
-from moin import error
-from moin.config import PasswordHasherConfig
+from moin import datastructures, error, log
+from moin.auth import MoinAuth  # used in eval()
+from moin.i18n import _, L_
+from moin.config import IndexStorageConfig, PasswordHasherConfig
 from moin.constants.rights import ACL_RIGHTS_CONTENTS, ACL_RIGHTS_FUNCTIONS
 from moin.constants.keys import *
 from moin.items.content import content_registry_enable, content_registry_disable
-from moin import datastructures
-from moin.auth import MoinAuth
 from moin.utils import plugins
 from moin.utils.crypto import PasswordHasher
 from moin.security import AccessControlList, DefaultSecurityPolicy
@@ -36,7 +35,7 @@ from moin.security import AccessControlList, DefaultSecurityPolicy
 if TYPE_CHECKING:
     from collections.abc import Callable
     from moin.auth import BaseAuth
-    from moin.config import AclConfig, AclMapping, BackendMapping, ItemViews, NamespaceMapping, NaviBarEntries
+    from moin.config import AclMapping, BackendMapping, ItemViews, NamespaceMapping, NaviBarEntries
     from moin.datastructures.backends import BaseDictsBackend, BaseGroupsBackend
 
 logging = log.getLogger(__name__)
@@ -76,19 +75,20 @@ class ConfigFunctionality:
     class for the benefit of the WikiConfig macro.
     """
 
+    create_backend: bool = False
+    destroy_backend: bool = False
+
     # fields dynamically added to the configuration via invocation of _add_options_to_defconfig at the end of this file
     acl_functions: str
     acl_mapping: AclMapping
     acl_rights_contents: list[str]
     acl_rights_functions: list[str]
-    acls: dict[str, AclConfig]
     admin_emails: list[str]
     auth: list[BaseAuth]
     auth_can_logout: list[str]
     auth_have_login: bool
     auth_login_inputs: list[str]
     backend_mapping: BackendMapping
-    backends: dict[str, str | None]
     cache: ConfigDataCache
     config_check_enabled: bool
     content_dir: str
@@ -99,7 +99,6 @@ class ConfigFunctionality:
     contenttype_enabled: list[str]
     data_dir: str
     default_root: str
-    destroy_backend: bool
     dicts: Callable[[], BaseDictsBackend]
     edit_lock_time: int
     edit_locking_policy: str
@@ -107,7 +106,7 @@ class ConfigFunctionality:
     endpoints_excluded: list[str]
     expanded_quicklinks_size: int
     groups: Callable[[], BaseGroupsBackend]
-    index_storage: tuple[str, list[Any] | tuple[Any, ...], dict[str, Any]]
+    index_storage: IndexStorageConfig
     instance_dir: str
     interwikiname: str
     interwiki_map: dict[str, str]
@@ -119,12 +118,11 @@ class ConfigFunctionality:
     mail_enabled: bool
     mail_from: str | None
     mail_password: str | None
-    mail_sendmail: str | None
     mail_smarthost: str | None
     mail_username: str | None
     markdown_extensions: list[str] = []
+    mimetypes_to_index_as_empty: list[str] = []
     namespace_mapping: NamespaceMapping
-    namespaces: dict[str, str]
     navi_bar: NaviBarEntries
     password_hasher_config: PasswordHasherConfig
     registration_hint: str
@@ -139,11 +137,13 @@ class ConfigFunctionality:
     template_dirs: list[str]
     theme_default: str
     timezone_default: str
-    uri: str
     user_defaults: dict[str, Any]
     user_email_unique: bool
     user_email_verification: bool
+    user_gravatar_default_img: str
     user_homewiki: str
+    user_use_gravatar: bool
+    wiki_local_dir: str
     wikiconfig_dir: str
 
     _plugin_modules: list[str]
@@ -156,9 +156,12 @@ class ConfigFunctionality:
         if self.config_check_enabled:
             self._config_check()
 
+        self.custom_css_path = False
+
         # define directories
-        data_dir = os.path.normpath(self.data_dir)
-        self.data_dir = data_dir
+        self.wikiconfig_dir = os.path.abspath(self.wikiconfig_dir)
+        self.wiki_local_dir = os.path.abspath(self.wiki_local_dir)
+        self.data_dir = os.path.abspath(self.data_dir)
 
         # Try to decode certain names that allow Unicode
         self._decode()
@@ -284,8 +287,26 @@ configuration for typos before requesting support or reporting a bug.
 """.format(", ".join(unknown))
             raise error.ConfigurationError(msg)
 
+    DECODE_NAMES: Final = (
+        "sitename",
+        "interwikiname",
+        "user_homewiki",
+        "interwiki_preferred",
+        "item_license",
+        "mail_from",
+        "item_dict_regex",
+        "item_group_regex",
+        "acl_functions",
+        "supplementation_item_names",
+        "html_pagetitle",
+        "theme_default",
+        "timezone_default",
+        "locale_default",
+    )
+
     def _decode(self):
-        """Try to decode certain names, ignore unicode values
+        """
+        Try to decode certain names, ignore unicode values
 
         Try to decode str using utf-8. If the decode fail, raise FatalError.
 
@@ -302,24 +323,7 @@ Also check your "-*- coding -*-" line at the top of your configuration
 file. It should match the actual charset of the configuration file.
 """
 
-        decode_names = (
-            "sitename",
-            "interwikiname",
-            "user_homewiki",
-            "interwiki_preferred",
-            "item_license",
-            "mail_from",
-            "item_dict_regex",
-            "item_group_regex",
-            "acl_functions",
-            "supplementation_item_names",
-            "html_pagetitle",
-            "theme_default",
-            "timezone_default",
-            "locale_default",
-        )
-
-        for name in decode_names:
+        for name in self.DECODE_NAMES:
             attr = getattr(self, name, None)
             if attr is not None:
                 # Try to decode strings
@@ -605,7 +609,9 @@ options_no_group_name: dict[str, OptionsGroup] = {
         "Data Storage",
         None,
         (
-            Option("data_dir", "./data/", "Path to the data directory."),
+            Option("wikiconfig_dir", "wiki", "Path to the wiki folder containing the wiki configuration."),
+            Option("wiki_local_dir", "wiki_local", "Path to the local wiki data."),
+            Option("data_dir", "data", "Path to the data directory."),
             Option("plugin_dirs", [], "Plugin directories."),
             Option("interwiki_map", {}, "Dictionary of wiki_name -> wiki_url"),
             Option(
@@ -696,6 +702,8 @@ options_no_group_name: dict[str, OptionsGroup] = {
                 },
                 "Default attributes of the user object",
             ),
+            Option("user_use_gravatar", False, "Use gravatar for moin wiki user"),
+            Option("user_gravatar_default_img", "blank", "Default image for user gravatar"),
         ),
     ),
     # ==========================================================================
@@ -739,6 +747,8 @@ options_no_group_name: dict[str, OptionsGroup] = {
                 "Content security policy in report-only mode.",
             ),
             Option("content_security_policy_limit_per_day", 100, "Limit of reports logged per day."),
+            # admin emails
+            Option("admin_emails", [], 'Administrator email addresses, e.g. ["admin <admin@example.org>"]'),
         ),
     ),
 }
@@ -773,23 +783,6 @@ options: dict[str, OptionsGroup] = {
             Option("functions", "", "Access Control List for functions."),
             Option("rights_contents", ACL_RIGHTS_CONTENTS, "Valid tokens for right sides of content ACL entries."),
             Option("rights_functions", ACL_RIGHTS_FUNCTIONS, "Valid tokens for right sides of function ACL entries."),
-        ),
-    ),
-    "ns": OptionsGroup(
-        "Storage Namespaces",
-        "Storage namespaces can be defined for all sorts of data. "
-        "All items sharing a common namespace as prefix are then stored within the same backend. "
-        "The common prefix for all data is ''.",
-        (
-            Option(
-                "content", "/", "All content is by default stored below /, hence the prefix is ''."
-            ),  # Not really necessary. Just for completeness.
-            Option(
-                "user_profile",
-                "userprofiles/",
-                "User profiles (i.e. user data, not their homepage) are stored in this namespace.",
-            ),
-            Option("user_homepage", "users/", "All user homepages are stored in this namespace."),
         ),
     ),
     "user": OptionsGroup(
