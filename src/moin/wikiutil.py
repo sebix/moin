@@ -18,6 +18,7 @@ import os
 import urllib
 
 from flask import current_app as app
+from werkzeug.exceptions import NotFound
 from werkzeug.routing.exceptions import NoMatch, RoutingException
 
 from moin.constants.misc import URI_SCHEMES
@@ -173,7 +174,7 @@ class WikiLinkAnalyzer:
         try:
             # find moin rule matching link and the corresponding variable mappings
             rule, vars = self.map_adapter.match(link, return_rule=True)
-        except (NoMatch, RoutingException):
+        except (NoMatch, NotFound, RoutingException):
             return WikiLinkInfo(False)
         item_name = vars.get("item_name", None)
         if item_name and item_name.startswith("+"):

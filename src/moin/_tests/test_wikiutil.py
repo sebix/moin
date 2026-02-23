@@ -145,6 +145,8 @@ def test_file_headers():
         ("+history/users/roland", WikiLinkInfo(True, "frontend.history", "users/roland")),
         # internal global link (not linking to a wiki item)
         ("all", WikiLinkInfo(True, "frontend.global_views", None, True)),
+        # link with invalid path
+        ("invalid_path///", WikiLinkInfo(False)),
         # link without matching moin route
         ("+invalid/help", WikiLinkInfo(False)),
         # external link
