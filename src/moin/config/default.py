@@ -785,23 +785,6 @@ options: dict[str, OptionsGroup] = {
             Option("rights_functions", ACL_RIGHTS_FUNCTIONS, "Valid tokens for right sides of function ACL entries."),
         ),
     ),
-    "ns": OptionsGroup(
-        "Storage Namespaces",
-        "Storage namespaces can be defined for all sorts of data. "
-        "All items sharing a common namespace as prefix are then stored within the same backend. "
-        "The common prefix for all data is ''.",
-        (
-            Option(
-                "content", "/", "All content is by default stored below /, hence the prefix is ''."
-            ),  # Not really necessary. Just for completeness.
-            Option(
-                "user_profile",
-                "userprofiles/",
-                "User profiles (i.e. user data, not their homepage) are stored in this namespace.",
-            ),
-            Option("user_homepage", "users/", "All user homepages are stored in this namespace."),
-        ),
-    ),
     "user": OptionsGroup(
         "User",
         None,
