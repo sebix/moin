@@ -69,53 +69,6 @@ class TestConverter:
         self.do(input, output)
 
     data = [
-        ("line<br />break", "<div><p>line<line-break />break</p></div>"),
-        ("<big>larger</big>", '<div><p><span html:class="moin-big">larger</span></p></div>'),
-        ('<span class="moin-small">smaller</span>', '<div><p><span html:class="moin-small">smaller</span></p></div>'),
-        ("<sub>sub</sub>script", "<div><p><sub>sub</sub>script</p></div>"),
-        ("<sup>super</sup>script", "<div><p><sup>super</sup>script</p></div>"),
-        ("<code>Code</code>", "<div><p><code>Code</code></p></div>"),
-        ("<em>Emphasis</em>", "<div><p><emphasis>Emphasis</emphasis></p></div>"),
-        ("<i>alternate voice</i>", '<div><p><emphasis html-tag="i">alternate voice</emphasis></p></div>'),
-        ("<u>underline</u>", "<div><p><u>underline</u></p></div>"),
-        ("<ins>inserted</ins>", "<div><p><ins>inserted</ins></p></div>"),
-        ("<kbd>Ctrl-X</kbd>", "<div><p><kbd>Ctrl-X</kbd></p></div>"),
-        ("<samp>Error 33</samp>", "<div><p><samp>Error 33</samp></p></div>"),
-        ("<tt>literal</tt>", "<div><p><literal>literal</literal></p></div>"),
-        ("<del>deleted</del>", "<div><p><del>deleted</del></p></div>"),
-        ("<s>no longer accurate</s>", "<div><p><s>no longer accurate</s></p></div>"),
-        # the <strike> tag is deprecated since HTML4.1!
-        ("<strike>obsolete</strike>", "<div><p><s>obsolete</s></p></div>"),
-        ("<q>Inline quote</q>", "<div><p><quote>Inline quote</quote></p></div>"),
-        # TODO: markdown 3.3 outputs `/>\n\n\n\n</p>`, prior versions output `/></p>`. Try test again with versions 3.3+
-        # Added similar test to test_markdown_in_out
-        # ('<hr>',
-        #  '<div><p><separator html:class="moin-hr3" />\n\n\n\n</p></div>'),  # works only with markdown 3.3
-    ]
-
-    @pytest.mark.parametrize("input,output", data)
-    def test_html_extension(self, input, output):
-        self.do(input, output)
-
-    data = [
-        # TODO: there are too many <div> wrappers!
-        ("<abbr>e.g.</abbr>", '<div><p><span html-tag="abbr">e.g.</span></p></div>'),
-        # <acronym> is deprecated in favour of <abbr> in HTML5
-        ("<acronym>AC/DC</acronym>", '<div><p><span html-tag="abbr">AC/DC</span></p></div>'),
-        # <address> is a block-level element
-        (
-            "<address>webmaster@example.org</address>",
-            '<div><div><div html-tag="address">webmaster@example.org</div>\n</div></div>',
-        ),
-        ("<dfn>term</dfn>", '<div><p><emphasis html-tag="dfn">term</emphasis></p></div>'),
-        ("<small>fine print</small>", '<div><p><span html-tag="small">fine print</span></p></div>'),
-    ]
-
-    @pytest.mark.parametrize("input,output", data)
-    def test_other_html_elements(self, input, output):
-        self.do(input, output)
-
-    data = [
         ("http://moinmo.in/", "<p>http://moinmo.in/</p>"),
         ("\\[escape](yo)", "<p>[escape](yo)</p>"),
         ("\\*yo\\*", "<p>*yo*</p>"),
@@ -230,36 +183,94 @@ class TestConverter:
     def test_admonition(self, input, output):
         self.do(input, output)
 
-    data = [
+    data = [  # TODO: there are too many <div> wrappers!
+        # only complete/correct tags are recognized.
         ("one < two", "<p>one &lt; two</p>"),
         ("[[one]] < two", '<p><a xlink:href="wiki.local:one">one</a> &lt; two</p>'),
         ("pre <strong>bold</strong> post", "<div><p>pre <strong>bold</strong> post</p></div>"),
+        (  # a block-level element
+            "<address>webmaster@example.org</address>",
+            '<div><div><div html-tag="address">webmaster@example.org</div>\n</div></div>',
+        ),
+        # Markdown syntax in block-level HTML tags is not processed (https://daringfireball.net/projects/markdown/syntax#html)
+        ("<h2>**strong** heading</h2>", '<div><div><h outline-level="2">**strong** heading</h>\n</div></div>'),
+        # TODO: markdown 3.3 outputs `/>\n\n\n\n</p>`, prior versions output `/></p>`. Try test again with versions 3.3+
+        # Added similar test to test_markdown_in_out
+        # ('<hr>',
+        #  '<div><p><separator html:class="moin-hr3" />\n\n\n\n</p></div>'),  # works only with markdown 3.3
+        # <hr> is a block level tag: end paragraph before the tag, start new paragraph after it!
+        # TODO currently fails:
+        # ("a<hr>_break_", '<div><p>a</p><separator html:class="moin-hr3" /><p><emphasis>break</emphasis></p></div>'),
+        # ("a<hr />_break_", '<div><p>a</p><separator html:class="moin-hr3" /><p><emphasis>break</emphasis></p></div>'),
+        # (
+        #     "a\n<hr>\n_break_",
+        #     '<div><p>a</p><separator html:class="moin-hr3" />\n<p><emphasis>break</emphasis></p></div>',
+        # ),
+        # ("_a_<hr>break", '<div><p><emphasis>a</emphasis></p><separator html:class="moin-hr3" /><p>break</p></div>'),
+        # ("_a_<hr>\nbreak", '<div><p><emphasis>a</emphasis></p><separator html:class="moin-hr3" />\n<p>break</p></div>'),
     ]
 
     @pytest.mark.parametrize("input,output", data)
-    def test_embedded_markup(self, input, output):
-        """Test embedded markup in markdown"""
+    def test_html_markup(self, input, output):
+        """Test handling of HTML markup."""
         self.do(input, output)
 
     data = [
-        # Original issue #1838: emphasis inside <del> in a list item
+        # TODO: there are too many <div> wrappers!
+        ("line<br />break", "<div><p>line<line-break />break</p></div>"),
+        ("<big>larger</big>", '<div><p><span html:class="moin-big">larger</span></p></div>'),
+        ('<span class="moin-small">smaller</span>', '<div><p><span html:class="moin-small">smaller</span></p></div>'),
+        ("<sub>sub</sub>script", "<div><p><sub>sub</sub>script</p></div>"),
+        ("<sup>super</sup>script", "<div><p><sup>super</sup>script</p></div>"),
+        ("<code>Code</code>", "<div><p><code>Code</code></p></div>"),
+        ("<em>Emphasis</em>", "<div><p><emphasis>Emphasis</emphasis></p></div>"),
+        ("<i>alternate voice</i>", '<div><p><emphasis html-tag="i">alternate voice</emphasis></p></div>'),
+        ("<u>underline</u>", "<div><p><u>underline</u></p></div>"),
+        ("<ins>inserted</ins>", "<div><p><ins>inserted</ins></p></div>"),
+        ("<kbd>Ctrl-X</kbd>", "<div><p><kbd>Ctrl-X</kbd></p></div>"),
+        ("<samp>Error 33</samp>", "<div><p><samp>Error 33</samp></p></div>"),
+        ("<tt>literal</tt>", "<div><p><literal>literal</literal></p></div>"),
+        ("<del>deleted</del>", "<div><p><del>deleted</del></p></div>"),
+        ("<s>no longer accurate</s>", "<div><p><s>no longer accurate</s></p></div>"),
+        # the <strike> tag is deprecated since HTML4.1!
+        ("<strike>obsolete</strike>", "<div><p><s>obsolete</s></p></div>"),
+        ("<q>Inline quote</q>", "<div><p><quote>Inline quote</quote></p></div>"),
+        ("<dfn>term</dfn>", '<div><p><emphasis html-tag="dfn">term</emphasis></p></div>'),
+        ("<small>fine print</small>", '<div><p><span html-tag="small">fine print</span></p></div>'),
+        ("<abbr>e.g.</abbr>", '<div><p><span html-tag="abbr">e.g.</span></p></div>'),
+        # keep standard attributes "title", "class", "style", and "alt":
+        ('<del class="red">deleted</del>', '<div><p><del html:class="red">deleted</del></p></div>'),
         (
+            '<abbr title="for example">e.g.</abbr>',
+            '<div><p><span html-tag="abbr" html:title="for example">e.g.</span></p></div>',
+        ),
+        # in HTML5, <acronym> is deprecated in favour of <abbr>
+        ("<acronym>AC/DC</acronym>", '<div><p><span html-tag="abbr">AC/DC</span></p></div>'),
+    ]
+
+    @pytest.mark.parametrize("input,output", data)
+    def test_inline_html(self, input, output):
+        self.do(input, output)
+
+    data = [  # Markdown syntax inside inline HMTL tags
+        (  # Original issue #1838: emphasis inside <del> in a list item
             "* <del>Deleted list item with _emphasized text_</del>",
             '<list item-label-generate="unordered"><list-item><list-item-body>'
             "<del>Deleted list item with <emphasis>emphasized text</emphasis></del>"
             "</list-item-body></list-item></list>",
         ),
-        # <ins> with emphasis
         ("<ins>Inserted with _emphasis_</ins>", "<p><ins>Inserted with <emphasis>emphasis</emphasis></ins></p>"),
-        # <kbd> with strong
-        ("<kbd>Press **Ctrl+C**</kbd>", "<p><kbd>Press <strong>Ctrl+C</strong></kbd></p>"),
-        # <del> without markdown (should still work - regression check)
-        ("<del>deleted</del>", "<div><p><del>deleted</del></p></div>"),
+        ("<kbd>Press **Q**</kbd>", "<p><kbd>Press <strong>Q</strong></kbd></p>"),
+        ("<del>`1+1`</del>", "<p><del><code>1+1</code></del></p>"),
+        ("<tt>**mono**</tt>", "<p><literal><strong>mono</strong></literal></p>"),
+        ("<i>alternate **voice**</i>", '<p><emphasis html-tag="i">alternate <strong>voice</strong></emphasis></p>'),
+        ("<small>`fine` print</small>", '<p><span html-tag="small"><code>fine</code> print</span></p>'),
+        ("<abbr>_e.g._</abbr>", '<p><span html-tag="abbr"><emphasis>e.g.</emphasis></span></p>'),
     ]
 
     @pytest.mark.parametrize("input,output", data)
-    def test_html_with_markdown_emphasis(self, input, output):
-        """Test HTML tags containing markdown inline markup (issue #1838)"""
+    def test_inline_html_with_embedded_markdown(self, input, output):
+        """Test HTML markup containing Markdown markup"""
         self.do(input, output)
 
     def serialize_strip(self, elem, **options):
