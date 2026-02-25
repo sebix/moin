@@ -13,11 +13,12 @@ from flask import Flask
 
 from moin.utils.tree import moin_page, xlink, xinclude, html
 from moin.converters.markdown_in import Converter
+from moin.i18n import i18n_init
 
 from . import serialize, XMLNS_RE
 
-DefaultConfig = namedtuple("DefaultConfig", ("markdown_extensions",))
-config = DefaultConfig(markdown_extensions=[])
+DefaultConfig = namedtuple("DefaultConfig", ("markdown_extensions", "locale_default"))
+config = DefaultConfig(markdown_extensions=[], locale_default="en")
 
 
 @pytest.fixture
@@ -28,6 +29,7 @@ def _app_context_with_markdown_extensions_config():
     """
     app = Flask(__name__)
     app.cfg = config
+    i18n_init(app)
     with app.app_context() as context:
         yield context
 
@@ -192,6 +194,9 @@ class TestConverter:
             "<address>webmaster@example.org</address>",
             '<div><div><div html-tag="address">webmaster@example.org</div>\n</div></div>',
         ),
+        # explicitly ignored tags (html_in.HtmlTags.ignored_tags) are dropped together with their content:
+        ("<button>Stop</button>", "<div><p /></div>"),
+        ("<script>1+1</script>", "<div><p>\n</p></div>"),
         # Markdown syntax in block-level HTML tags is not processed (https://daringfireball.net/projects/markdown/syntax#html)
         ("<h2>**strong** heading</h2>", '<div><div><h outline-level="2">**strong** heading</h>\n</div></div>'),
         # TODO: markdown 3.3 outputs `/>\n\n\n\n</p>`, prior versions output `/></p>`. Try test again with versions 3.3+
@@ -266,6 +271,8 @@ class TestConverter:
         ("<i>alternate **voice**</i>", '<p><emphasis html-tag="i">alternate <strong>voice</strong></emphasis></p>'),
         ("<small>`fine` print</small>", '<p><span html-tag="small"><code>fine</code> print</span></p>'),
         ("<abbr>_e.g._</abbr>", '<p><span html-tag="abbr"><emphasis>e.g.</emphasis></span></p>'),
+        # ignored tag and content
+        ("<script>`1+1`</script>", "<div><p>\n</p></div>"),
     ]
 
     @pytest.mark.parametrize("input,output", data)
