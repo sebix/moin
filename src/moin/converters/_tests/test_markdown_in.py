@@ -280,6 +280,36 @@ class TestConverter:
         """Test HTML markup containing Markdown markup"""
         self.do(input, output)
 
+    data = [  # Some valid samples still fail!
+        # tags with dedicated visit_{tag_name}() method:
+        ("<big>_larger_</big>", '<p><span html:class="moin-big"><emphasis>larger</emphasis></span></p>'),
+        ("<p><dfn>*strong* term</dfn></p>", '<p><emphasis html-tag="dfn"><strong>strong</strong>term</emphasis></p>'),
+        ("<acronym>**AC/DC**</acronym>", '<p><span html-tag="abbr"><strong>AC/DC</strong></span></p>'),
+        # tags with standard_attributes "title", "class", "style", and "alt"
+        ('<del class="red">`1+1`</del>', '<p><del html:class="red"><code>1+1</code></del></p>'),
+        (
+            '<abbr title="for example">_e.g._</abbr>',
+            '<p><span html-tag="abbr" title="for example"><emphasis>e.g.</emphasis></span></p>',
+        ),
+        # explicitly ignored tags are dropped toghether with their content:
+        ("<button>`Stop`</button>", "<p />"),
+        # unknown tags are ignored but their content is passed on:
+        ("<custom>`1+1`</custom>", "<p><code>1+1</code></p>"),
+        # TODO: Markdown markup and empty tags: fix paragraphs <p>:
+        # <br> is an inline tag: do not break the paragraph!
+        ("one<br>_two_", "<div><p>one<line-break /><emphasis>two</emphasis></p></div>"),
+        ("one<br />_two_", "<div><p>one<line-break /><emphasis>two</emphasis</p>></div>"),
+        ("one<br>\n_two_", "<div><p>one<line-break /><emphasis>two</emphasis></p></div>"),
+        ("_one_<br>two", "<div><p><emphasis>one</emphasis><line-break />two</p></div>"),
+        ("_one_<br>\ntwo", "<div><p><emphasis>one</emphasis><line-break />\ntwo</p></div>"),
+    ]
+
+    @pytest.mark.xfail
+    @pytest.mark.parametrize("input,output", data)
+    def test_failing_html_and_markdown(self, input, output):
+        """Test HTML tags containing Markdown inline markup"""
+        self.do(input, output)
+
     def serialize_strip(self, elem, **options):
         result = serialize(elem, namespaces=self.namespaces, **options)
         return self.output_re.sub("", result)
