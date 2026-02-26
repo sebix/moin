@@ -304,7 +304,7 @@ class Converter(html_in.HtmlTags):
         """
         new = []
         # copy anything but '\n'
-        if hasattr(element, "text") and element.text is not None and element.text != "\n":
+        if getattr(element, "text", "") and element.text != "\n":
             new.append(postproc_text(self.markdown, element.text))
 
         for child in element:
@@ -318,7 +318,7 @@ class Converter(html_in.HtmlTags):
                 r = (r,)
             new.extend(r)
             # copy anything but '\n'
-            if hasattr(child, "tail") and child.tail is not None and child.tail != "\n" and child.tail:
+            if getattr(child, "tail", "") and child.tail != "\n":
                 new.append(postproc_text(self.markdown, child.tail))
         return new
 
